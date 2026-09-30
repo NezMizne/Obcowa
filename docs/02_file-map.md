@@ -642,6 +642,8 @@ A03_Obcowa/
 - `src/components/TreeNode.svelte` : 責務: ワークスペース内の単一ファイル・フォルダ（ノード）を表示し、再帰的な展開とユーザー操作（開く・右クリックメニュー・インライン編集）を処理するUIコンポーネント
   - `export let node`
   - `export let ownerId`
+  - `export let parentSortBy`
+  - `export let parentSortOrder`
 
 ### src/features/
 - `src/features/ContextMenu.svelte` : 右クリックメニューのUI。画面外をクリックしたら自動で閉じる
@@ -784,7 +786,7 @@ A03_Obcowa/
   - `export function getPinnedNode(pin: any, workspace: any)`
   - `export function getSortedNodes(nodes: any[], sortBy = 'name', sortOrder = 'asc')`
   - `export function groupNodesByCategory(nodes: any[], categoryOrder: string[] = [], sortBy = 'name', sortOrder = 'asc')`
-  - `export async function refreshTree(nodes: any[], workspaceNodes: any[])`
+  - `export async function refreshTree(nodes: any[], workspaceNodes: any[], parentSortBy?: string, parentSortOrder?: string)`
   - `export function buildFilenameIndex(nodes: any[])`
   - `export function searchFilesByName(nodes: any[], query: string)`
   - `export function extractFilePaths(nodes: any[])`
