@@ -27,6 +27,9 @@
   export let node: any;
   // isReadonly を削除し、親から引き継ぐ情報に変更
   export let ownerId: string;
+  // 親フォルダからのソート設定を引き継ぐためのプロパティ
+  export let parentSortBy: string | null = null;
+  export let parentSortOrder: string | null = null;
   let isOpen = false;
 
   $: activeTab = $openTabs.find(t => t.id === $activeTabId);
@@ -104,9 +107,10 @@
   }
 
   // 現在のソート設定（個別設定があれば優先、なければ全体設定）を計算し、常にソートされた配列を作る
+  // 中間の親フォルダから設定を引き継いでいれば、グローバル設定より優先する
   $: globalSort = getWorkspaceGlobalSort();
-  $: sortBy = node.sort_by || globalSort.by;
-  $: sortOrder = node.sort_order || globalSort.order;
+  $: sortBy = node.sort_by || parentSortBy || globalSort.by;
+  $: sortOrder = node.sort_order || parentSortOrder || globalSort.order;
 
   // 💥 高速化したソート処理（localeCompare を廃止し、シンプルな比較に差し替え）
   $: sortedChildren = [...(node.children || [])].sort((a, b) => {
@@ -416,7 +420,8 @@ async function loadFileContent(path: string): Promise<string> {
       style="border-color: color-mix(in srgb, var(--text-color) 10%, transparent);"
     >
       {#each sortedChildren as childNode}
-        <svelte:self node={childNode} {ownerId} />
+        <!-- 解決したソート設定を子孫へ引き継がせる -->
+        <svelte:self node={childNode} {ownerId} parentSortBy={sortBy} parentSortOrder={sortOrder} />
       {/each}
     </div>
   {/if}

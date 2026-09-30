@@ -93,11 +93,16 @@ function normalizePath(p: string | undefined | null): string {
   return p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
 }
 
-export async function refreshTree(nodes: any[], workspaceNodes: any[]): Promise<any[]> {
+// 親のソート設定を引き継ぐためのオプショナル引数を追加
+export async function refreshTree(nodes: any[], workspaceNodes: any[], parentSortBy?: string, parentSortOrder?: string): Promise<any[]> {
   const updatedNodes = [];
 
   for (let node of nodes) {
     if (node.type === 'Folder' && node.original_path) {
+            // 現在のノードに適用すべきソート設定を解決する
+      const currentSortBy = node.sort_by || parentSortBy;
+      const currentSortOrder = node.sort_order || parentSortOrder;
+
       if (node.smart_rules) {
         try {
           const children = await invoke('evaluate_smart_folder', { 
@@ -111,8 +116,8 @@ export async function refreshTree(nodes: any[], workspaceNodes: any[]): Promise<
           // 💥 1. 自身のソート設定を使ってディスクから中身を読み込む
           let freshChildren: any[] = await invoke('read_directory', { 
               path: node.original_path,
-              sortBy: node.sort_by || null,
-              sortOrder: node.sort_order || null
+              sortBy: currentSortBy || null,
+              sortOrder: currentSortOrder || null
           });
           // 💥 2. 以前の階層情報をパスで引けるようにMap化
           const oldChildrenMap = new Map();
@@ -135,7 +140,7 @@ export async function refreshTree(nodes: any[], workspaceNodes: any[]): Promise<
             }
           }
           // 💥 4. 設定が復元された freshChildren を次の階層へ渡して再帰処理を行う
-          node.children = await refreshTree(freshChildren, workspaceNodes);
+          node.children = await refreshTree(freshChildren, workspaceNodes, currentSortBy, currentSortOrder);
         } catch (e) {}
       }
     }
