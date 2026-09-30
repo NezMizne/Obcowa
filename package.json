@@ -1,6 +1,6 @@
 {
   "name": "obcowa",
-  "version": "0.18.2",
+  "version": "0.18.3",
   "description": "Obsidianを母艦として、プロジェクトごとにワークスペースを構成できるMarkdownエディタ",
   "type": "module",
   "scripts": {
