@@ -369,6 +369,7 @@ pub fn run() {
             file_ops::read_image_bytes,
             task_ops::get_workspace_tasks,
             task_ops::complete_task,
+            search_ops::get_workspace_tags,
             dashboard_ops::load_dashboard,
             dashboard_ops::save_dashboard
         ])

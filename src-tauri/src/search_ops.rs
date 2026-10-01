@@ -2,6 +2,7 @@
 
 use std::fs;
 use std::path::Path;
+use std::collections::HashMap;
 use serde::Serialize;
 
 // 検索結果用の構造体
@@ -96,4 +97,101 @@ pub async fn search_files(
         }
     }
     Ok(results)
+}
+
+// ▼ 以下、タグ抽出用の新規追加処理
+
+#[tauri::command]
+pub async fn get_workspace_tags(file_paths: Vec<String>) -> Result<HashMap<String, u32>, String> {
+    let mut tag_counts: HashMap<String, u32> = HashMap::new();
+
+    for path in file_paths {
+        if let Ok(content) = fs::read_to_string(&path) {
+            let tags = extract_tags_from_content(&content);
+            for tag in tags {
+                *tag_counts.entry(tag).or_insert(0) += 1;
+            }
+        }
+    }
+    Ok(tag_counts)
+}
+
+/// 文字列からフロントマター内のタグと、本文中の #タグ を抽出する
+fn extract_tags_from_content(content: &str) -> Vec<String> {
+    let mut tags = Vec::new();
+    let mut in_frontmatter = false;
+    let mut in_tags_section = false;
+
+    for (i, line) in content.lines().enumerate() {
+        let trimmed = line.trim();
+        
+        // フロントマターの境界判定
+        if i == 0 && trimmed == "---" {
+            in_frontmatter = true;
+            continue;
+        } else if in_frontmatter && i > 0 && trimmed == "---" {
+            in_frontmatter = false;
+            in_tags_section = false;
+            continue;
+        }
+
+        if in_frontmatter {
+            let lower = trimmed.to_lowercase();
+            if lower.starts_with("tags:") || lower.starts_with("tag:") {
+                in_tags_section = true;
+                // インライン配列 (tags: [a, b]) の処理
+                if let (Some(start), Some(end)) = (trimmed.find('['), trimmed.find(']')) {
+                    let inner = &trimmed[start + 1..end];
+                    for t in inner.split(',') {
+                        let clean = t.trim().trim_matches(|c| c == '\'' || c == '"' || c == '#');
+                        if !clean.is_empty() { tags.push(clean.to_string()); }
+                    }
+                } else {
+                    // カンマ区切り (tags: a, b) の処理
+                    let parts: Vec<&str> = trimmed.split(':').collect();
+                    if parts.len() > 1 {
+                        for t in parts[1].split(',') {
+                            let clean = t.trim().trim_matches(|c| c == '\'' || c == '"' || c == '#');
+                            if !clean.is_empty() { tags.push(clean.to_string()); }
+                        }
+                    }
+                }
+            } else if in_tags_section && trimmed.starts_with('-') {
+                // リスト形式 (- tag)
+                let clean = trimmed[1..].trim().trim_matches(|c| c == '\'' || c == '"' || c == '#');
+                if !clean.is_empty() { tags.push(clean.to_string()); }
+            } else if !trimmed.starts_with('-') {
+                in_tags_section = false;
+            }
+        } else {
+            // 本文からのタグ抽出 (#tag)
+            let chars: Vec<char> = line.chars().collect();
+            let mut j = 0;
+            while j < chars.len() {
+                if chars[j] == '#' {
+                    // 行頭または直前が空白の場合のみタグ開始とみなす
+                    if j == 0 || chars[j - 1].is_whitespace() {
+                        let mut tag_end = j + 1;
+                        while tag_end < chars.len() {
+                            let c = chars[tag_end];
+                            // タグに含める文字 (英数字, _, -, /)
+                            if c.is_alphanumeric() || c == '_' || c == '-' || c == '/' {
+                                tag_end += 1;
+                            } else {
+                                break;
+                            }
+                        }
+                        if tag_end > j + 1 {
+                            let tag: String = chars[j + 1..tag_end].iter().collect();
+                            tags.push(tag);
+                        }
+                        j = tag_end;
+                        continue;
+                    }
+                }
+                j += 1;
+            }
+        }
+    }
+    tags
 }

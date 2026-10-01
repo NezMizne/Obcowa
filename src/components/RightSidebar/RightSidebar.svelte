@@ -3,6 +3,7 @@
 <script lang="ts">
     import { ListTree, Tags, PanelRightClose } from 'lucide-svelte';
     import OutlinePanel from './OutlinePanel.svelte';
+    import TagPanel from './TagPanel.svelte';
 
     export let activeTab: any;
     export let onClose: () => void;
@@ -112,7 +113,7 @@
         {#if currentView === 'outline'}
             <OutlinePanel {activeTab} on:jump />
         {:else}
-            <div class="p-4 text-sm opacity-50 flex items-center justify-center h-full">将来の実装エリア</div>
+            <TagPanel />
         {/if}
     </div>
 </div>

@@ -44,6 +44,7 @@ A03_Obcowa/
 │   │   ├── RightSidebar
 │   │   │   ├── OutlinePanel.svelte
 │   │   │   ├── RightSidebar.svelte
+│   │   │   ├── TagPanel.svelte
 │   │   │   └── outlineUtils.ts
 │   │   ├── Settings
 │   │   │   ├── SettingsModal.svelte
@@ -270,6 +271,14 @@ A03_Obcowa/
 📄 `src/components/RightSidebar/RightSidebar.svelte`
   └── import lucide-svelte
   └── import ./OutlinePanel.svelte
+  └── import ./TagPanel.svelte
+
+📄 `src/components/RightSidebar/TagPanel.svelte`
+  └── import @tauri-apps/api/core
+  └── import svelte
+  └── import lucide-svelte
+  └── import ../../lib/stores
+  └── import ../../lib/workspace/treeUtils
 
 📄 `src/components/Settings/SettingsModal.svelte`
   └── import svelte
@@ -527,6 +536,7 @@ A03_Obcowa/
 📄 `src-tauri/src/search_ops.rs`
   └── use/mod std::fs
   └── use/mod std::path::Path
+  └── use/mod std::collections::HashMap
   └── use/mod serde::Serialize
 
 📄 `src-tauri/src/task_ops.rs`
@@ -608,6 +618,7 @@ A03_Obcowa/
 - `src/components/RightSidebar/RightSidebar.svelte` : 責務: 右サイドバーの親枠。将来タブが増えた際の切り替えや閉じる処理を担う
   - `export let activeTab`
   - `export let onClose`
+- `src/components/RightSidebar/TagPanel.svelte` : 責務: ワークスペース内のタグを階層ツリー化して表示し、検索と連動する
 - `src/components/RightSidebar/outlineUtils.ts` : 責務: Markdownから見出しを抽出する純粋関数
   - `export interface OutlineItem`
   - `export function extractHeadings(markdown: string)`
@@ -847,6 +858,7 @@ A03_Obcowa/
 - `src-tauri/src/search_ops.rs` : 画面上の仮想ツリー（VirtualNode）を対象とした高速ファイル検索コマンドおよび関連処理
   - `pub struct SearchResultItem`
   - `pub async fn search_files( file_paths: Vec<String>, search_by_filename: bool, query: String, ) -> Result<Vec<SearchResultItem>, String>`
+  - `pub async fn get_workspace_tags(file_paths: Vec<String>) -> Result<HashMap<String, u32>, String>`
 - `src-tauri/src/task_ops.rs` : 責務: ワークスペース内のタスク検索と、タスク状態の安全な更新処理
   - `pub struct Task`
   - `pub struct ScanOptions`
