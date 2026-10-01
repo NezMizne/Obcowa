@@ -145,7 +145,7 @@ fn extract_tags_from_content(content: &str) -> Vec<String> {
                     let inner = &trimmed[start + 1..end];
                     for t in inner.split(',') {
                         let clean = t.trim().trim_matches(|c| c == '\'' || c == '"' || c == '#');
-                        if !clean.is_empty() { tags.push(clean.to_string()); }
+                        if !clean.is_empty() { tags.push(clean.to_lowercase()); }
                     }
                 } else {
                     // カンマ区切り (tags: a, b) の処理
@@ -153,14 +153,14 @@ fn extract_tags_from_content(content: &str) -> Vec<String> {
                     if parts.len() > 1 {
                         for t in parts[1].split(',') {
                             let clean = t.trim().trim_matches(|c| c == '\'' || c == '"' || c == '#');
-                            if !clean.is_empty() { tags.push(clean.to_string()); }
+                            if !clean.is_empty() { tags.push(clean.to_lowercase()); }
                         }
                     }
                 }
             } else if in_tags_section && trimmed.starts_with('-') {
                 // リスト形式 (- tag)
                 let clean = trimmed[1..].trim().trim_matches(|c| c == '\'' || c == '"' || c == '#');
-                if !clean.is_empty() { tags.push(clean.to_string()); }
+                if !clean.is_empty() { tags.push(clean.to_lowercase()); }
             } else if !trimmed.starts_with('-') {
                 in_tags_section = false;
             }
@@ -202,7 +202,7 @@ fn extract_tags_from_content(content: &str) -> Vec<String> {
                         }
                         if tag_end > j + 1 {
                             let tag: String = chars[j + 1..tag_end].iter().collect();
-                            tags.push(tag);
+                            tags.push(tag.to_lowercase());
                         }
                         j = tag_end;
                         continue;
