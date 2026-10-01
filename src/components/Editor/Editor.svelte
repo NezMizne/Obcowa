@@ -292,7 +292,7 @@ function handleInput(event: Event) {
             </div>
             
             <!-- 🔽 サイドバー展開ボタン (閉じている時のみ、画面右上に浮かせる) -->
-            {#if !isRightSidebarOpen && activeTab.path !== '__SEARCH__' && activeTab.path !== '__TASK__'}
+            {#if !isRightSidebarOpen && activeTab.path !== '__TASK__'}
                 <button 
                     on:click={() => isRightSidebarOpen = true}
                     class="absolute top-2 right-2 p-1.5 rounded opacity-50 hover:opacity-100 z-10 transition-all"
@@ -313,7 +313,7 @@ function handleInput(event: Event) {
     </div>
 
     <!-- 🔽 右サイドバー領域 (開いている時のみ描画) -->
-    {#if isRightSidebarOpen && activeTab && activeTab.path !== '__SEARCH__' && activeTab.path !== '__TASK__'}
+    {#if isRightSidebarOpen && activeTab && activeTab.path !== '__TASK__'}
         <RightSidebar 
             {activeTab} 
             onClose={() => isRightSidebarOpen = false}
