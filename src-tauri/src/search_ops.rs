@@ -121,6 +121,7 @@ fn extract_tags_from_content(content: &str) -> Vec<String> {
     let mut tags = Vec::new();
     let mut in_frontmatter = false;
     let mut in_tags_section = false;
+    let mut in_code_block = false; // コードブロック状態を追跡
 
     for (i, line) in content.lines().enumerate() {
         let trimmed = line.trim();
@@ -164,11 +165,29 @@ fn extract_tags_from_content(content: &str) -> Vec<String> {
                 in_tags_section = false;
             }
         } else {
+            
+            // --- コードブロックの開始/終了判定 ---
+            if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+                in_code_block = !in_code_block;
+                continue; // 記号だけの行からは抽出しない
+            }
+            if in_code_block {
+                continue; // コードブロック内はすべて無視
+            }
+
             // 本文からのタグ抽出 (#tag)
             let chars: Vec<char> = line.chars().collect();
             let mut j = 0;
+            let mut in_inline_code = false; // インラインコード状態を追跡
             while j < chars.len() {
-                if chars[j] == '#' {
+                if chars[j] == '`' {
+                    in_inline_code = !in_inline_code;
+                    j += 1;
+                    continue;
+                }
+
+                // インラインコード (バッククォートで囲まれた領域) の外側でのみ # を探す
+                if !in_inline_code && chars[j] == '#' {
                     // 行頭または直前が空白の場合のみタグ開始とみなす
                     if j == 0 || chars[j - 1].is_whitespace() {
                         let mut tag_end = j + 1;
