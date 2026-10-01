@@ -22,6 +22,14 @@
     }
     closeMenu();
   }
+
+  // キーボードでの選択（Enter / Space）でリンクを開く
+  function handleKeydown(e: KeyboardEvent, url: string) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); // Spaceキーでの画面スクロールを防止
+      openUrl(url);
+    }
+  }
 </script>
 
 <svelte:window on:click={closeMenu} />
@@ -30,11 +38,14 @@
   <div class="border-t flex flex-col shrink-0 relative" style="border-color: color-mix(in srgb, var(--text-color) 20%, transparent);">
     <div class="p-2 overflow-y-auto space-y-1 max-h-[150px]">
       {#each links as link (link.id)}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <!-- svelte-ignore a11y-no-static-element-interactions -->
+
         <div 
-          class="text-sm hover:underline cursor-pointer truncate pl-1" style="color: color-mix(in srgb, var(--accent-color) 80%, var(--text-color));"
+          role="link"
+          tabindex="0"
+          class="text-sm hover:underline cursor-pointer truncate pl-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-color)] focus-visible:-outline-offset-2" 
+          style="color: color-mix(in srgb, var(--accent-color) 80%, var(--text-color));"
           on:click={() => openUrl(link.url)} 
+          on:keydown={(e) => handleKeydown(e, link.url)}
           on:contextmenu={(e) => handleContextMenu(e, link.id)}
         >
           {link.title}
