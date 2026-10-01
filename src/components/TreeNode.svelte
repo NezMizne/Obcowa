@@ -112,6 +112,16 @@
   $: sortBy = node.sort_by || parentSortBy || globalSort.by;
   $: sortOrder = node.sort_order || parentSortOrder || globalSort.order;
 
+  // 表示用の名前（ファイルの場合は拡張子を隠す）
+  $: displayName = (() => {
+    if (!node.name) return '';
+    if (node.type === 'File') {
+      const dotIndex = node.name.lastIndexOf('.');
+      if (dotIndex > 0) return node.name.substring(0, dotIndex); // 拡張子を除外
+    }
+    return node.name;
+  })();
+
   // 💥 高速化したソート処理（localeCompare を廃止し、シンプルな比較に差し替え）
   $: sortedChildren = [...(node.children || [])].sort((a, b) => {
     const isDirA = a.type === 'Folder';
@@ -385,7 +395,7 @@ async function loadFileContent(path: string): Promise<string> {
         on:click|stopPropagation
       />
     {:else}
-      <span class="truncate">{node.name}</span>
+      <span class="truncate">{displayName}</span>
     {/if}
   </div>
 

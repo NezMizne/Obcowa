@@ -18,6 +18,15 @@
 
   let tabMenu = { show: false, x: 0, y: 0, items: [] as MenuItem[], openSubLeft: false };
 
+  // 表示用のタブ名（ファイルの場合は拡張子を隠す）
+  function getTabDisplayName(title: string, path: string): string {
+      if (isSpecialPath(path)) return title; // 特殊なタブはそのまま
+      
+      const dotIndex = title.lastIndexOf('.');
+      if (dotIndex > 0) return title.substring(0, dotIndex);
+      return title;
+  }
+
     // タブをダブルクリックした時の処理
   function handleTabDoubleClick(path: string) {
       // 検索タブなどの特殊なタブ以外なら、ツリー展開を要求する
@@ -156,8 +165,8 @@
           {#if tab.path === '__SEARCH__'}
               <Search size={14} class="mr-1.5 opacity-70 shrink-0" />
           {/if}
-          <!-- 文字が長い場合は truncate で末尾が「...」になります -->
-          <span class="truncate flex-1" title={tab.title}>{tab.title}</span>
+          <!--  表示する文字だけ拡張子を隠す（マウスオーバー時のツールチップは元の名前のまま） -->
+          <span class="truncate flex-1" title={tab.title}>{getTabDisplayName(tab.title, tab.path)}</span>
           
           {#if tab.isDirty}
               <span class="ml-1 text-[10px] shrink-0" style="color: var(--accent-color);">●</span>
