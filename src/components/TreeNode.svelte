@@ -327,6 +327,14 @@ async function loadFileContent(path: string): Promise<string> {
     else if (e.key === 'Escape') editMode = 'none';
   }
 
+  // キーボードでの選択（Enter / Space）の制御
+  function handleNodeKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); // Spaceキーでの画面スクロールを防止
+      handleClick();
+    }
+  }
+
   async function openInExplorer() {
     try {
       // 💥 Rust側に作ってもらったコマンドを呼ぶ
@@ -340,15 +348,17 @@ async function loadFileContent(path: string): Promise<string> {
 <svelte:window on:click={closeMenu} />
 
 <div class="ml-2 relative">
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
   <!-- 💥 isActive のときに背景色を青っぽくする -->
   <div 
     bind:this={nodeElement}
+    role="treeitem"
+    tabindex="0"
     class="flex items-center p-1 rounded text-sm cursor-pointer select-none transition-colors 
+    focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-color)] focus-visible:-outline-offset-2
            {isActive ? 'font-bold' : 'hover:opacity-70'}"
     style="{isActive ? 'background-color: color-mix(in srgb, var(--active-highlight-bg) 80%, transparent); color: var(--text-color);' : 'background-color: transparent; color: inherit;'}"
     on:click={handleClick}
+    on:keydown={handleNodeKeydown}
     on:contextmenu={handleContextMenu}
   >
     {#if node.type === 'Folder'}
