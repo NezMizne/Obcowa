@@ -10,14 +10,17 @@
 
     let isSearching = false;
 
-    // ▼ 追加: 外部から自動検索フラグが立てられたら検知して検索を実行する
+    // 無限ループを防ぐため、関数として分離し timeout で非同期に呼ぶ
     $: if ($searchState.autoRunSearch) {
-        $searchState.autoRunSearch = false; // 無限ループを防ぐためすぐに下ろす
-        executeSearch();
+        setTimeout(() => {
+            $searchState.autoRunSearch = false;
+            executeSearch();
+        }, 0);
     }
 
    // 検索の実行
     async function executeSearch() {
+        if (isSearching) return; // 実行中の連打（多重実行）をブロック
         if (!$searchState.query.trim()) return;
         isSearching = true; 
         $searchState.hasSearched = true;
