@@ -15,64 +15,63 @@ fn recover_temp_files(dir: &Path) {
             let file_name = entry.file_name();
             let name_str = file_name.to_string_lossy();
             
-            if name_str.starts_with(".~writing_") {
-                // 書き込み途中でクラッシュしたゴミは破棄（元データは無傷）
-                let _ = fs::remove_file(entry.path());
-            } else if name_str.starts_with(".~ready_") {
-                // 書き込み完了後、コピー上書き中にクラッシュしたものは復旧
-                let original_name = name_str.trim_start_matches(".~ready_");
+            if name_str.starts_with(".~backup_") {
+                // インプレース上書き中にクラッシュした場合は、安全なバックアップから復旧
+                let original_name = name_str.trim_start_matches(".~backup_");
                 let original_path = dir.join(original_name);
-                let ready_path = entry.path();
+                let backup_path = entry.path();
                 
-                // 完全なデータから元ファイルを上書き復旧
-                if fs::copy(&ready_path, &original_path).is_ok() {
-                    let _ = fs::remove_file(&ready_path);
-                }
+                // バックアップで元ファイルを上書き復旧（renameは一瞬で終わるため安全）
+                let _ = fs::rename(&backup_path, &original_path);
+            } else if name_str.starts_with(".~writing_") || name_str.starts_with(".~ready_") {
+                // 以前の古いバージョンのゴミが残っていれば安全のため削除
+                let _ = fs::remove_file(entry.path());
             }
         }
     }
 }
 
-/// 💥 安全にファイルを保存し、かつ作成日時を維持するアトミック書き込み関数
+///  作成日時を確実に維持しつつ、データ消失を防ぐ「安全なインプレース上書き」
 pub fn atomic_write(path: &Path, content: &[u8]) -> Result<(), String> {
     let dir = path.parent().unwrap_or_else(|| Path::new(""));
     let file_name = path.file_name().unwrap_or_default().to_string_lossy();
-    
-    // 書き込み途中のファイル名と、書き込み完了済みのリカバリー用ファイル名
-    let writing_path = dir.join(format!(".~writing_{}", file_name));
-    let ready_path = dir.join(format!(".~ready_{}", file_name));
 
-    // 前回のゴミがあれば消す
-    let _ = fs::remove_file(&writing_path);
+    // 既存ファイルの退避用バックアップパス
+    let backup_path = dir.join(format!(".~backup_{}", file_name));
 
-    // 1. 一時ファイルに書き込む（まだ元データは安全）
-    let mut file = fs::File::create(&writing_path).map_err(|e| e.to_string())?;
-    if let Err(e) = file.write_all(content) {
-        let _ = fs::remove_file(&writing_path);
-        return Err(e.to_string());
+    // 前回のゴミバックアップが残っていれば念のため消す
+    let _ = fs::remove_file(&backup_path);
+
+    // 1. 既存ファイルがある場合は、上書き前に「完全なデータ」のバックアップを作る
+    if path.exists() {
+        if let Err(e) = fs::copy(path, &backup_path) {
+            return Err(format!("バックアップの作成に失敗しました: {}", e));
+        }
     }
 
-    // 2. ディスクに確実に保存
-    if let Err(e) = file.sync_all() {
-        let _ = fs::remove_file(&writing_path);
-        return Err(e.to_string());
+    // 2. 元ファイルの中身をクリア(truncate)して新しいデータを書き込む。
+    // この「インプレース上書き」によりOSの作成日時が確実に維持される。
+    let write_result = (|| -> std::io::Result<()> {
+        let mut file = fs::OpenOptions::new().write(true).create(true).truncate(true).open(path)?;
+        file.write_all(content)?;
+        file.sync_all()?;
+        Ok(())
+    })();
+
+    match write_result {
+        Ok(_) => {
+            // 3. 上書きが完全に成功したらバックアップを消す
+            let _ = fs::remove_file(&backup_path);
+            Ok(())
+        }
+        Err(e) => {
+            // 💥 万が一上書き中にエラー（強制終了やディスクフル等）が起きたら、退避したバックアップから即座に復旧
+            if backup_path.exists() {
+                let _ = fs::rename(&backup_path, path);
+            }
+            Err(format!("ファイルの保存に失敗しました: {}", e))
+        }
     }
-
-    // 3. アトミックにリネームして「完全なデータ」として確定させる
-    if let Err(e) = fs::rename(&writing_path, &ready_path) {
-        let _ = fs::remove_file(&writing_path);
-        return Err(e.to_string());
-    }
-
-    // 4. 完全なデータから、元のファイルへ中身を「コピー上書き」する（これによりOSの作成日時が維持される）
-    if let Err(e) = fs::copy(&ready_path, path) {
-        return Err(format!("ファイルのコピー上書きに失敗しました: {}", e));
-    }
-
-    // 5. 成功したらリカバリー用ファイルを消す
-    let _ = fs::remove_file(&ready_path);
-
-    Ok(())
 }
 
 // ============================================
