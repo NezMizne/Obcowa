@@ -81,6 +81,7 @@ A03_Obcowa/
 │   │   │   ├── editorSave.test.ts
 │   │   │   ├── editorSave.ts
 │   │   │   ├── embedViewer.ts
+│   │   │   ├── fileManager.ts
 │   │   │   ├── imageViewer.test.ts
 │   │   │   ├── imageViewer.ts
 │   │   │   ├── mermaidViewer.ts
@@ -175,6 +176,7 @@ A03_Obcowa/
   └── import ../../features/Task/TaskList.svelte
   └── import ../../lib/utils/pathUtils
   └── import ../Modals/ConflictDialog.svelte
+  └── import ../../lib/editor/fileManager
   └── import ../RightSidebar/RightSidebar.svelte
   └── import lucide-svelte
 
@@ -216,6 +218,7 @@ A03_Obcowa/
   └── import ../../lib/utils/tagUtils
   └── import svelte
   └── import ../../lib/utils/pathUtils
+  └── import ../../lib/editor/fileManager
 
 📄 `src/components/Editor/markdownSetup.ts`
   └── import dompurify
@@ -337,6 +340,7 @@ A03_Obcowa/
   └── import ../lib/utils/tagUtils
   └── import ../features/ContextMenu.svelte
   └── import ../lib/workspace/menuUtils
+  └── import ../lib/editor/fileManager
 
 📄 `src/features/ContextMenu.svelte`
   └── import ../lib/workspace/menuUtils
@@ -415,6 +419,10 @@ A03_Obcowa/
   └── import ../stores
   └── import ../workspace/treeUtils
   └── import ../../components/Editor/markdownSetup
+
+📄 `src/lib/editor/fileManager.ts`
+  └── import @tauri-apps/api/core
+  └── import ../stores
 
 📄 `src/lib/editor/imageViewer.test.ts`
   └── import vitest
@@ -716,6 +724,9 @@ A03_Obcowa/
   - `export interface BaseTabData`
 - `src/lib/editor/embedViewer.ts` : プレビュー内のノート埋め込みプレースホルダーを検出し、非同期でコンテンツを取得して描画する
   - `export async function loadEmbedsInDom(container: HTMLElement, currentFilePath: string, embedStack: string[] = [])`
+- `src/lib/editor/fileManager.ts` : 責務: SvelteからRust(Tauri)へのファイル保存リクエストを直列化（キュー管理）し、競合を防ぐ
+  - `export function requestSaveFile(path: string, content: string, lastModified: number, force: boolean)`
+  - `export async function saveAndUpdateTab(path: string, content: string, lastModified: number, force: boolean)`
 - `src/lib/editor/imageViewer.test.ts` : --- START OF src/lib/imageViewer.test.ts ---
 - `src/lib/editor/imageViewer.ts` : プレビュー内の画像プレースホルダーを検出し、ローカル画像の検索・バイナリ読込・Blobキャッシュと表示反映を行う
   - `export async function loadImagesInDom(container: HTMLElement, activeTabPath: string, imageFolders: string[] = [])`

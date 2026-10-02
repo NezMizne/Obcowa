@@ -8,6 +8,7 @@
   import { extractTags, updateTagsInContent } from '../../lib/utils/tagUtils';
   import { getContext } from 'svelte';
   import { isSpecialPath } from '../../lib/utils/pathUtils';
+  import { saveAndUpdateTab } from '../../lib/editor/fileManager';
 
   // 親(Editor.svelte)から関数をもらって実行する（親に依存しないための工夫）
   export let handleTabClick: (id: string) => void;
@@ -86,14 +87,13 @@
 
               // 💥 最新の更新日時も取得する
               const modified = (await invoke('get_file_modified', { path: tab.path })) as number;
-
+              // 💥 変更: 参照を直接いじらず、イミュータブルに更新する
               openTabs.update(tabs => {
-                  const target = tabs.find(t => t.id === tab.id);
-                  if (target) {
-                      target.content = content;
-                      target.lastModified = modified; // 💥 更新日時も最新化
-                  }
-                  return tabs;
+                  return tabs.map(t => 
+                      t.id === tab.id 
+                          ? { ...t, content, lastModified: modified } 
+                          : t
+                  );
               });
           } catch (err) {
               console.error("最新ファイルの読み込みに失敗しました", err);
@@ -123,23 +123,9 @@
       content = newContent;
 
       try {
-          // 競合防止用の引数（lastModified, force）を追加
-          const newModified = await invoke('save_file_content', { 
-              path: tab.path,  
-              content, 
-              lastModified: tab.lastModified || 0, 
-              force: true 
-          });
-          
-          openTabs.update(tabs => { 
-              const t = tabs.find(t => t.id === tab.id); 
-              if (t) { 
-                  t.content = content; 
-                  t.isDirty = false;
-                  t.lastModified = newModified as number; // 💥 追加: 日時も更新
-              } 
-              return tabs; 
-          });
+
+          // 💥 変更: 直接の invoke や Store の手動更新をやめ、安全なマネージャーに委譲
+          await saveAndUpdateTab(tab.path, content, tab.lastModified || 0, true);
       } catch(err) { 
           alert("タグの保存に失敗しました"); 
       }

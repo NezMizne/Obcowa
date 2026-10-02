@@ -21,6 +21,8 @@
     setWorkspaceNodeCategory
   } from '../lib/workspace/workspaceManager';
 
+  import { saveAndUpdateTab } from '../lib/editor/fileManager';
+
     // UI操作（モーダル）に関するものだけを Context から受け取る
   const { editSmartFolder, openNewFileModal } = getContext('workspaceActions') as any;
 
@@ -259,23 +261,8 @@
 
     // 保存処理
     try {
-      // 引数に lastModified と force を追加
-      const newModified = await invoke('save_file_content', { 
-        path: node.path, 
-        content,
-        lastModified: 0, // ツリーからの直接操作なので0でOK
-        force: true      // ユーザーの明示的な操作なので強制上書き
-      });
-      
-      openTabs.update(tabs => {
-        const tab = tabs.find(t => t.path === node.path);
-        if (tab) {
-          tab.content = content;
-          tab.isDirty = false;
-          tab.lastModified = newModified as number; // タブを開いていた場合は日時も更新
-        }
-        return tabs;
-      });
+// 直接の invoke や Store の手動更新をやめ、安全なマネージャーに委譲
+      await saveAndUpdateTab(node.path, content, 0, true);
     } catch(err) {
       alert("タグの保存に失敗しました");
     }

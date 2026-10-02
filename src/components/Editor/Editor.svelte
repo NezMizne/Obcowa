@@ -17,6 +17,7 @@
     import TaskList from '../../features/Task/TaskList.svelte';
     import { isSpecialPath } from '../../lib/utils/pathUtils';
     import ConflictDialog from '../Modals/ConflictDialog.svelte';
+    import { requestSaveFile } from '../../lib/editor/fileManager';
 
     import RightSidebar from '../RightSidebar/RightSidebar.svelte';
     import { PanelRightOpen } from 'lucide-svelte';
@@ -55,7 +56,8 @@
    };
 
     const saveDeps: SaveDependencies = {
-        saveFileContent: (path, content, lastModified, force) => invoke('save_file_content', { path, content, lastModified, force }),
+        // 直接 invoke せず、キュー管理された requestSaveFile に任せる
+        saveFileContent: (path, content, lastModified, force) => requestSaveFile(path, content, lastModified, force),
         getModified: (path) => invoke('get_file_modified', { path }),
         readFileContent: (path) => invoke('read_file_content', { path }),
         askConflictResolution,
@@ -70,10 +72,11 @@
     $: if (activeTab && activeTab.path && !isSpecialPath(activeTab.path) && activeTab.lastModified === 0 && !fetchingModifiedTabs.has(activeTab.id)) {
         fetchingModifiedTabs.add(activeTab.id);
         invoke('get_file_modified', { path: activeTab.path }).then((modified: any) => {
+            // 💥 変更: 直接プロパティを書き換えず、イミュータブルに更新する
             openTabs.update(tabs => {
-                const t = tabs.find(t => t.id === activeTab!.id);
-                if (t) t.lastModified = modified as number;
-                return tabs;
+                return tabs.map(t => 
+                    t.id === activeTab!.id ? { ...t, lastModified: modified as number } : t
+                );
             });
             fetchingModifiedTabs.delete(activeTab!.id);
         }).catch(() => {});
@@ -163,7 +166,12 @@
             } catch(e) {}
         }
 
-        openTabs.update(tabs => { const t = tabs.find(t => t.id === activeTab!.id); if (t) { if (!t.isEditing) t.content = activeTab!.content; t.isEditing = !t.isEditing; } return tabs; });
+        // Storeのイミュータブル更新に修正
+        openTabs.update(tabs => tabs.map(t => 
+            t.id === activeTab!.id 
+                ? { ...t, content: !t.isEditing ? activeTab!.content : t.content, isEditing: !t.isEditing } 
+                : t
+        ));
 
         await tick();
 
@@ -192,24 +200,21 @@ function handleInput(event: Event) {
         if (activeTab.isConflict || !activeTab.isDirty) {
             activeTab.isConflict = false;
             activeTab.isDirty = true;
-            openTabs.update(tabs => {
-                const t = tabs.find(t => t.id === activeTab!.id);
-                if (t) {
-                    t.isDirty = true;
-                    t.isConflict = false;
-                }
-                return tabs;
-            });
+
+            // 💥 変更: Storeのイミュータブル更新に修正
+            openTabs.update(tabs => tabs.map(t => 
+                t.id === activeTab!.id ? { ...t, isDirty: true, isConflict: false } : t
+            ));
         }
 
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => { 
             // 1.5秒キー入力が止まったらStoreに内容を反映して自動保存
-            openTabs.update(tabs => {
-                const t = tabs.find(t => t.id === activeTab!.id);
-                if (t) t.content = newText;
-                return tabs;
-            });
+
+            // 💥 変更: Storeのイミュータブル更新に修正
+            openTabs.update(tabs => tabs.map(t => 
+                t.id === activeTab!.id ? { ...t, content: newText } : t
+            ));
             const current = $openTabs.find(t => t.id === activeTab!.id);
             // 保留が解除されている場合のみ保存を実行
             if (!current?.isConflict) {
