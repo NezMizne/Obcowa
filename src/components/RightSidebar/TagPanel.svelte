@@ -3,7 +3,7 @@
 <script lang="ts">
     import { invoke } from '@tauri-apps/api/core';
     import { onMount } from 'svelte';
-    import { ChevronRight, ChevronDown, Hash } from 'lucide-svelte';
+    import { ChevronRight, ChevronDown } from 'lucide-svelte';
     import { workspacesStore, currentWorkspaceIndex, openSearchTab, searchState } from '../../lib/stores';
     import { getWorkspaceNodes, extractFilePaths } from '../../lib/workspace/treeUtils';
 
@@ -168,34 +168,47 @@
                 <!-- svelte-ignore a11y-click-events-have-key-events -->
                 <!-- svelte-ignore a11y-no-static-element-interactions -->
                 <div 
-                    class="flex items-center py-1 px-2 rounded cursor-pointer transition-colors text-sm hover:bg-[var(--active-highlight-bg)] group"
-                    style="padding-left: {node.depth * 1.2 + 0.5}rem; color: var(--text-color);"
+                    class="relative flex items-center py-1 px-2 rounded cursor-pointer transition-colors text-sm hover:bg-[var(--active-highlight-bg)] group"
+                    style="color: var(--text-color);"
                     on:click={() => handleTagClick(node.fullTag)}
                 >
-                    <!-- 開閉矢印 (子要素がある場合のみ) -->
-                    <div 
-                        class="w-4 h-4 flex items-center justify-center mr-1 opacity-50 hover:opacity-100"
-                        on:click={(e) => node.hasChildren && toggleExpand(node.fullTag, e)}
-                    >
-                        {#if node.hasChildren}
-                            {#if node.isExpanded}
-                                <ChevronDown size={14} />
-                            {:else}
-                                <ChevronRight size={14} />
+                    <!-- ツリーの縦線ガイド (親階層の数だけ描画) -->
+                    {#if node.depth > 0}
+                        {#each Array(node.depth) as _, i}
+                            <div 
+                                class="absolute top-0 bottom-0 w-px"
+                                style="left: {i * 1.2 + 1.0}rem; background-color: color-mix(in srgb, var(--text-color) 12%, transparent);"
+                            ></div>
+                        {/each}
+                    {/if}
+
+                    <!-- コンテンツのインデント -->
+                    <div class="flex items-center w-full z-10" style="padding-left: {node.depth * 1.2}rem;">
+                        <!-- 開閉矢印 (子要素がある場合のみ) -->
+                        <div 
+                            class="w-4 h-4 flex items-center justify-center mr-1 opacity-50 hover:opacity-100"
+                            on:click={(e) => node.hasChildren && toggleExpand(node.fullTag, e)}
+                        >
+                            {#if node.hasChildren}
+                                {#if node.isExpanded}
+                                    <ChevronDown size={14} />
+                                {:else}
+                                    <ChevronRight size={14} />
+                                {/if}
                             {/if}
+                            </div>
+
+                        <!-- 名前 -->
+                        <span class="truncate flex-1">{node.part}</span>
+
+
+                        <!-- カウントバッジ -->
+                        {#if node.count > 0}
+                            <span class="text-[10px] ml-2 px-1.5 rounded-full font-bold opacity-60 bg-black/10 dark:bg-white/10 group-hover:opacity-100">
+                                {node.count}
+                            </span>
                         {/if}
                     </div>
-
-                    <!-- アイコンと名前 -->
-                    <Hash size={14} class="mr-1.5 opacity-60" style="color: var(--accent-color);" />
-                    <span class="truncate flex-1">{node.part}</span>
-
-                    <!-- カウントバッジ -->
-                    {#if node.count > 0}
-                        <span class="text-[10px] ml-2 px-1.5 rounded-full font-bold opacity-60 bg-black/10 dark:bg-white/10 group-hover:opacity-100">
-                            {node.count}
-                        </span>
-                    {/if}
                 </div>
             {/each}
         {/if}
