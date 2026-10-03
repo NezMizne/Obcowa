@@ -4,7 +4,9 @@
     import type { Task } from '../../lib/task/taskService';
 
     export let task: Task;
-    export let isUpdating = false;
+    export let isUpdatingTasks: Set<string> = new Set();
+
+    $: isUpdating = isUpdatingTasks.has(`${task.filePath}:${task.lineNumber}`);
 
     let isChecked = false;
 
@@ -18,7 +20,7 @@
 
 </script>
 
-<div class="task-item">
+<div class="task-item-container">
     <div class="task-item-row" class:disabled={isUpdating}>
         <input 
             type="checkbox" 
@@ -31,19 +33,34 @@
             <span class="task-text" class:completed={isChecked}>{task.text}</span>
         </div>
     </div>
+
+    <!-- 子タスクがある場合は再帰的に描画 -->
+    {#if task.subTasks && task.subTasks.length > 0}
+        <div class="sub-tasks">
+            {#each task.subTasks as subTask (`${subTask.filePath}:${subTask.lineNumber}`)}
+                <svelte:self 
+                    task={subTask} 
+                    {isUpdatingTasks}
+                    on:change
+                />
+            {/each}
+        </div>
+    {/if}
 </div>
 
 <style>
-    .task-item {
-        padding: 8px;
-        border-radius: 4px;
-        transition: background-color 0.2s;
+    .task-item-container {
+        display: flex;
+        flex-direction: column;
     }
 
     .task-item-row {
         display: flex;
         align-items: flex-start;
         gap: 8px;
+        padding: 6px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
     }
 
     .task-item-row.disabled {
@@ -112,4 +129,13 @@
         opacity: 0.5;
     }
 
+    /* 子タスク用のインデントと左線 */
+    .sub-tasks {
+        margin-left: 1.2rem;
+        padding-left: 0.5rem;
+        border-left: 1px solid color-mix(in srgb, var(--text-color) 15%, transparent);
+        display: flex;
+        flex-direction: column;
+    }
+    
 </style>

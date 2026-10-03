@@ -695,7 +695,7 @@ A03_Obcowa/
   - `export let depth`
 - `src/features/Task/TaskItem.svelte` : タスク1件分のUI表示と、チェックボックス操作のイベント発火
   - `export let task`
-  - `export let isUpdating`
+  - `export let isUpdatingTasks`
 - `src/features/Task/TaskList.svelte` : 責務: ワークスペースの未完了タスク一覧を表示し、更新を管理する親コンポーネント
   - `export let workspaceIndex`
 

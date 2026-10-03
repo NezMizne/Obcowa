@@ -59,7 +59,7 @@
                 {#each node.tasks as task (`${task.filePath}:${task.lineNumber}`)}
                     <TaskItem 
                         {task} 
-                        isUpdating={isUpdatingTasks.has(`${task.filePath}:${task.lineNumber}`)}
+                         {isUpdatingTasks}
                         on:change={(e) => dispatch('change', e.detail)}
                     />
                 {/each}

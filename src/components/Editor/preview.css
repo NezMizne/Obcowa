@@ -660,3 +660,19 @@
 .editor-preview .callout-content > *:last-child {
     margin-bottom: 0 !important;
 }
+
+/* タスクリストのマーカー（黒ポッチや白丸）を消す */
+.markdown-preview li.task-list-item {
+    list-style-type: none;
+}
+
+/* タスクリスト全体の左余白を調整（必要に応じて） */
+.markdown-preview ul.contains-task-list {
+    padding-left: 1.5em;
+}
+
+/* チェックボックス自体の見た目を整える場合 */
+.markdown-preview input[type="checkbox"] {
+    margin-right: 0.5em;
+    cursor: pointer;
+}

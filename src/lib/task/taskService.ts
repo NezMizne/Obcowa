@@ -172,12 +172,11 @@ export function buildTaskTree(
 
 //  ソートとネスト解決を行う純粋関数 ---
 export function sortTaskTreeNodes(nodes: any[], sortOption: SortOption): any[] {
-    if (sortOption === 'none') return nodes;
 
     return nodes.map(node => {
         const newNode = { ...node };
         
-        // 1. ノード内のタスクをソート
+        // 1. ノード内のタスクを階層化＆ソート
         if (newNode.tasks && newNode.tasks.length > 0) {
             newNode.tasks = processTaskSorting(newNode.tasks, sortOption);
         }
@@ -214,31 +213,28 @@ function processTaskSorting(tasks: Task[], sortOption: SortOption): Task[] {
         stack.push({ task, indent: currentIndent });
     }
 
-    // 2. 親タスクのみをソート（子は親の中に入っているので追従する）
-    rootTasks.sort((a, b) => {
-        if (sortOption === 'text') {
-            return a.text.localeCompare(b.text);
-        }
-        if (sortOption === 'created') {
-            return (b.fileCreated || 0) - (a.fileCreated || 0);
-        }
-        if (sortOption === 'modified') {
-            return (b.fileModified || 0) - (a.fileModified || 0);
-        }
-        return 0;
-    });
+    // 2. ソート処理を再帰的に行う純粋関数
+    const sortTasksRecursive = (taskList: Task[]): Task[] => {
 
-    // 3. 既存UIを壊さないよう、フラットな一次元配列に展開して返す
-    const flattenTasks = (nodeList: Task[]): Task[] => {
-        const flat: Task[] = [];
-        for (const node of nodeList) {
-            flat.push(node);
-            if (node.subTasks && node.subTasks.length > 0) {
-                flat.push(...flattenTasks(node.subTasks));
+        // ソート指定がある場合のみ並び替えを実行
+        if (sortOption !== 'none') {
+            taskList.sort((a, b) => {
+                if (sortOption === 'text') return a.text.localeCompare(b.text);
+                if (sortOption === 'created') return (b.fileCreated || 0) - (a.fileCreated || 0);
+                if (sortOption === 'modified') return (b.fileModified || 0) - (a.fileModified || 0);
+                return 0;
+            });
+        }
+
+        // 子階層も再帰的にソート
+        for (const task of taskList) {
+            if (task.subTasks && task.subTasks.length > 0) {
+                task.subTasks = sortTasksRecursive(task.subTasks);
             }
         }
-        return flat;
+        return taskList;
     };
 
-    return flattenTasks(rootTasks);
+    // 3. ツリー構造のまま再帰ソートして返す（フラット化を廃止）
+    return sortTasksRecursive(rootTasks);
 }
