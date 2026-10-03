@@ -128,7 +128,7 @@
             return wsList;
         });
 
-        await invoke('save_workspaces', { workspaces: $workspacesStore });
+        await requestSaveWorkspaces();
         loadTasks();
     }
 

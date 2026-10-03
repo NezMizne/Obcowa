@@ -458,6 +458,7 @@ A03_Obcowa/
 📄 `src/lib/task/taskService.ts`
   └── import @tauri-apps/api/core
   └── import ../workspace/treeUtils
+  └── import ../editor/fileManager
 
 📄 `src/lib/utils/queryParser.ts`
   └── import moo

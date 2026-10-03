@@ -2,6 +2,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { extractFilePaths } from '../workspace/treeUtils';
+import { saveAndUpdateTab } from '../editor/fileManager';
 
 export interface Task {
     filePath: string;
@@ -56,12 +57,44 @@ export async function fetchWorkspaceTasks(nodes: any[], options?: TaskScanOption
  */
 export async function completeTaskStatus(task: Task, completed: boolean = true) {
     try {
-        await invoke('complete_task', {
-            filePath: task.filePath,
-            lineNumber: task.lineNumber,
-            originalText: task.originalText,
-            completed
-        });
+        // 1. 対象ファイルの最新テキストと更新日時を取得
+        const currentContent: string = await invoke('read_file_content', { path: task.filePath });
+        const lastModified: number = await invoke('get_file_modified', { path: task.filePath });
+
+        // 2. テキストを行に分割
+        const lines = currentContent.split('\n');
+
+        // 💥 追加: 行番号がズレている可能性を考慮し、元のテキストを手掛かりに探し出す
+        let targetIndex = task.lineNumber - 1;
+        let found = false;
+
+        if (targetIndex >= 0 && targetIndex < lines.length && lines[targetIndex].includes(task.originalText)) {
+            found = true; // 記録されていた行番号でピッタリ見つかった場合
+        } else {
+            // ズレていた場合はファイル全体から検索する
+            targetIndex = lines.findIndex(line => line.includes(task.originalText));
+            if (targetIndex !== -1) found = true;
+        }
+        
+        if (!found) {
+            throw new Error("タスクが見つかりません。ファイルが大幅に書き換えられた可能性があります。");
+        }
+
+        const targetLine = lines[targetIndex];
+        
+        // 💥 変更: `-` だけでなく `*` や `+` のタスクリストにも対応
+        const newMark = completed ? '[x]' : '[ ]';
+        const updatedLine = targetLine.replace(/([-*+])\s*\[[ xX]\]/, `$1 ${newMark}`);
+
+        if (targetLine === updatedLine) {
+            return; 
+        }
+
+        lines[targetIndex] = updatedLine;
+        const newContent = lines.join('\n');
+
+        // 3. 安全なファイルマネージャー（キュー）経由で保存し、エディタのタブも同期させる
+        await saveAndUpdateTab(task.filePath, newContent, lastModified, true);
     } catch (error) {
         console.error("Failed to complete task:", error);
         throw new Error(`タスクの更新に失敗しました: ${error}`);
