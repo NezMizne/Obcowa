@@ -424,7 +424,21 @@ function rehypeTaskLists() {
     return (tree: HastRoot) => {
         visit(tree, 'element', (node: HastElement) => {
             if (node.tagName === 'li' && node.properties?.className && Array.isArray(node.properties.className) && node.properties.className.includes('task-list-item')) {
+
+                // 1. 直下にある邪魔な <p> を解体（unwrap）して中身を li 直下に出す
+                let flattenedChildren: any[] = [];
+                for (const child of node.children) {
+                    if (child.type === 'element' && child.tagName === 'p') {
+                        flattenedChildren.push(...(child.children || []));
+                    } else {
+                        flattenedChildren.push(child);
+                    }
+                }
+                node.children = flattenedChildren;
+                
+                // 2. 綺麗になった構造で input を探し、スタイル用クラスを付与
                 const inputIndex = node.children.findIndex((c) => c.type === 'element' && c.tagName === 'input' && c.properties?.type === 'checkbox');
+
                 if (inputIndex !== -1) {
                     const inputNode = node.children[inputIndex] as HastElement;
                     if (inputNode.properties) {
