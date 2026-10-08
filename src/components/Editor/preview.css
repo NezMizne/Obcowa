@@ -309,12 +309,14 @@
 
 /* --- テーブル（表） --- */
 .editor-preview table {
-    width: 100% !important;
+    width: auto !important;
+    max-width: 100% !important;
     border-collapse: collapse !important;
     margin: 1.5rem 0 !important;
     /* 外枠の線 */
     border: 1px solid color-mix(in srgb, var(--text-color) 15%, transparent) !important;
     border-radius: 4px;
+    
 }
 
 /* テーブルの見出し行（th） */
