@@ -152,12 +152,19 @@ async function openLauncherWindow() {
 <!-- 背景クリックでも閉じられるオーバーレイ -->
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center" on:click|self={handleClose}>
-  <div class="rounded-lg shadow-2xl border border-black/20 flex overflow-hidden w-[750px] h-[600px] relative" style="background-color: var(--menu-bg); color: var(--text-color);">
+<div 
+  class="fixed inset-0 z-50 flex items-center justify-center" 
+  style="background-color: color-mix(in srgb, var(--text-color) 45%, transparent);" 
+  on:click|self={handleClose}
+>
+  <div 
+    class="rounded-lg shadow-2xl flex overflow-hidden w-[750px] h-[600px] relative border" 
+    style="background-color: var(--bg-color); color: var(--text-color); border-color: color-mix(in srgb, var(--text-color) 15%, transparent);"
+  >
      
     <!-- ★追加: Obsidian風の右上の閉じる（×）ボタン -->
     <button 
-      class="absolute top-3 right-3 p-1.5 rounded-full hover:bg-black/10 transition opacity-70 hover:opacity-100 z-10"
+      class="absolute top-3 right-3 p-1.5 rounded-full transition opacity-60 hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--text-color)_10%,transparent)] z-10"
       style="color: var(--text-color);"
       title="閉じる (Esc)"
       on:click={handleClose}
@@ -167,11 +174,14 @@ async function openLauncherWindow() {
 
     
     <!-- 左サイドバー（タブ） -->
-    <div class="w-1/4 bg-black/10 p-4 space-y-2 text-sm border-r border-black/10">
-      <button class="w-full text-left p-2 rounded transition-colors {activeSettingsTab === 'general' ? 'bg-[var(--active-highlight-bg)] text-[var(--text-color)] font-bold' : 'hover:bg-black/10'}" on:click={() => activeSettingsTab = 'general'}>一般</button>
-      <button class="w-full text-left p-2 rounded transition-colors {activeSettingsTab === 'theme' ? 'bg-[var(--active-highlight-bg)] text-[var(--text-color)] font-bold' : 'hover:bg-black/10'}" on:click={() => activeSettingsTab = 'theme'}>テーマ</button>
+    <div 
+      class="w-1/4 p-4 space-y-1 text-sm border-r"
+      style="background-color: color-mix(in srgb, var(--text-color) 3%, transparent); border-color: color-mix(in srgb, var(--text-color) 10%, transparent);"
+    >
+      <button class="w-full text-left px-3 py-2 rounded transition-colors {activeSettingsTab === 'general' ? 'bg-[var(--active-highlight-bg)] text-[var(--text-color)] font-bold' : 'opacity-70 hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--text-color)_8%,transparent)]'}" on:click={() => activeSettingsTab = 'general'}>一般</button>
+      <button class="w-full text-left px-3 py-2 rounded transition-colors {activeSettingsTab === 'theme' ? 'bg-[var(--active-highlight-bg)] text-[var(--text-color)] font-bold' : 'opacity-70 hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--text-color)_8%,transparent)]'}" on:click={() => activeSettingsTab = 'theme'}>テーマ</button>
        <!-- スタイルタブのボタン -->
-      <button class="w-full text-left p-2 rounded transition-colors {activeSettingsTab === 'style' ? 'bg-[var(--active-highlight-bg)] text-[var(--text-color)] font-bold' : 'hover:bg-black/10'}" on:click={() => activeSettingsTab = 'style'}>スタイル</button>
+      <button class="w-full text-left px-3 py-2 rounded transition-colors {activeSettingsTab === 'style' ? 'bg-[var(--active-highlight-bg)] text-[var(--text-color)] font-bold' : 'opacity-70 hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--text-color)_8%,transparent)]'}" on:click={() => activeSettingsTab = 'style'}>スタイル</button>
     </div>
 
     <!-- 右コンテンツ -->
@@ -185,14 +195,25 @@ async function openLauncherWindow() {
           <div class="text-sm opacity-80 mb-2">添付ファイル（画像）の保存フォルダ (複数指定可)</div>
           <ul class="mb-2 space-y-1">
             {#each $workspacesStore[$currentWorkspaceIndex]?.image_folders || [] as folder}
-              <li class="flex justify-between items-center bg-black/5 border border-black/20 rounded p-2 text-sm opacity-80">
+              <li 
+                class="flex justify-between items-center rounded p-2 text-sm border"
+                style="background-color: color-mix(in srgb, var(--text-color) 4%, transparent); border-color: color-mix(in srgb, var(--text-color) 10%, transparent);"
+              >
                 <span class="truncate" title={folder}>{folder}</span>
-                <button class="text-red-400 hover:text-red-500 font-bold px-2" on:click={() => removeImageFolder(folder)}>×</button>
+                <button 
+                  class="px-2 py-0.5 rounded opacity-60 hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--text-color)_12%,transparent)] transition font-bold" 
+                  title="削除"
+                  on:click={() => removeImageFolder(folder)}
+                >×</button>
               </li>
             {/each}
           </ul>
           <div class="flex gap-2">
-            <button on:click={selectImageFolder} class="w-full px-4 py-2 bg-black/10 hover:bg-black/20 rounded text-sm border border-black/20 transition text-center">＋ フォルダを追加</button>
+            <button 
+              on:click={selectImageFolder} 
+              class="w-full px-4 py-2 rounded text-sm border transition text-center hover:bg-[color-mix(in_srgb,var(--text-color)_12%,transparent)]"
+              style="background-color: color-mix(in srgb, var(--text-color) 6%, transparent); border-color: color-mix(in srgb, var(--text-color) 12%, transparent); color: var(--text-color);"
+            >＋ フォルダを追加</button>
           </div>
           <div class="text-xs opacity-50 mt-1">※上から順に画像を検索します。指定しない場合はファイルと同じ場所を探します。</div>
         </div>
@@ -200,10 +221,14 @@ async function openLauncherWindow() {
         <!-- プロパティ表示設定エリア -->
         <div class="mb-6">
           <div class="text-sm opacity-80 mb-2">エディタ表示設定 (現在のワークスペース)</div>
-          <label class="flex items-center space-x-2 cursor-pointer bg-black/5 border border-black/20 rounded p-3 hover:bg-black/10 transition">
+          <label 
+            class="flex items-center space-x-3 cursor-pointer rounded p-3 border transition hover:bg-[color-mix(in_srgb,var(--text-color)_6%,transparent)]"
+            style="background-color: color-mix(in srgb, var(--text-color) 3%, transparent); border-color: color-mix(in srgb, var(--text-color) 10%, transparent);"
+          >
             <input 
               type="checkbox" 
-              class="rounded"
+              class="rounded cursor-pointer"
+              style="accent-color: var(--accent-color);"
               checked={$workspacesStore[$currentWorkspaceIndex]?.show_properties ?? false} 
               on:change={(e) => {
                 const checked = e.currentTarget.checked;
@@ -219,13 +244,18 @@ async function openLauncherWindow() {
 
         <!-- ランチャーの設定エリア -->
         <div class="mb-6">
-    <h3 class="text-lg font-bold mb-3 border-b border-gray-600 pb-1">起動設定</h3>
-    <div class="flex items-center justify-between bg-[var(--menu-bg)] p-3 rounded">
+    <div class="text-sm opacity-80 mb-2">起動設定</div>
+          <div 
+            class="flex items-center justify-between p-3 rounded border"
+            style="background-color: color-mix(in srgb, var(--text-color) 3%, transparent); border-color: color-mix(in srgb, var(--text-color) 10%, transparent);"
+          >
         <div>
             <div class="font-medium">ワークスペース一覧 (ランチャー)</div>
             <label class="flex items-center space-x-2 mt-2 cursor-pointer">
                 <input 
                     type="checkbox" 
+                    class="cursor-pointer"
+                    style="accent-color: var(--accent-color);"
                     checked={$showLauncherOnStartup} 
                     on:change={toggleLauncherSetting} 
                 />
@@ -234,29 +264,40 @@ async function openLauncherWindow() {
         </div>
         <button 
             on:click={openLauncherWindow} 
-            class="bg-[var(--accent-color)] text-white px-4 py-2 rounded text-sm hover:opacity-80 transition-opacity"
+            class="px-4 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
+            style="background-color: var(--accent-color); color: var(--bg-color);"
         >
             一覧を開く
         </button>
     </div>
 </div>
 
-        <hr class="border-black/10 mb-6">
+        <hr class="mb-6 border-0 border-t" style="border-color: color-mix(in srgb, var(--text-color) 10%, transparent);">
 
         <!-- 💥 タスク除外設定エリア -->
         <div class="mb-6">
           <div class="text-sm opacity-80 mb-2">タスク一覧から除外されているファイル (現在のワークスペース)</div>
-          {#if $workspacesStore[$currentWorkspaceIndex]?.task_exclude_paths && $workspacesStore[$currentWorkspaceIndex].task_exclude_paths.length > 0}task_exclude_paths.length > 0}
-            <ul class="border border-black/20 rounded bg-black/5 max-h-40 overflow-y-auto p-2 space-y-1">
+          {#if $workspacesStore[$currentWorkspaceIndex]?.task_exclude_paths && $workspacesStore[$currentWorkspaceIndex].task_exclude_paths.length > 0}
+            <ul 
+              class="rounded max-h-40 overflow-y-auto p-2 space-y-1 border"
+              style="background-color: color-mix(in srgb, var(--text-color) 3%, transparent); border-color: color-mix(in srgb, var(--text-color) 10%, transparent);"
+              >
                {#each $workspacesStore[$currentWorkspaceIndex].task_exclude_paths as path}
-                <li class="flex justify-between items-center text-sm p-1 hover:bg-black/10 rounded">
+                <li class="flex justify-between items-center text-sm p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--text-color)_6%,transparent)]">
                   <span class="truncate opacity-80" title={path}>{path.split(/[/\\]/).pop()}</span>
-                  <button class="text-red-400 hover:text-red-500 font-bold px-2" on:click={() => removeExcludePath(path)}>×</button>
+                  <button 
+                    class="px-2 py-0.5 rounded opacity-60 hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--text-color)_12%,transparent)] transition font-bold" 
+                    title="解除"
+                    on:click={() => removeExcludePath(path)}
+                  >×</button>
                 </li>
               {/each}
             </ul>
           {:else}
-            <div class="text-sm opacity-50 p-2 border border-black/20 rounded bg-black/5">除外されているファイルはありません</div>
+            <div 
+              class="text-sm opacity-60 p-3 rounded border text-center"
+              style="background-color: color-mix(in srgb, var(--text-color) 2%, transparent); border-color: color-mix(in srgb, var(--text-color) 8%, transparent);"
+            >除外されているファイルはありません</div>
           {/if}
         </div>
 
@@ -264,32 +305,60 @@ async function openLauncherWindow() {
         <div class="mb-6">
           <div class="text-sm opacity-80 mb-2">タスク一覧から除外されている見出し (現在のワークスペース)</div>
           {#if $workspacesStore[$currentWorkspaceIndex]?.task_exclude_headings && $workspacesStore[$currentWorkspaceIndex].task_exclude_headings.length > 0}
-            <ul class="border border-black/20 rounded bg-black/5 max-h-40 overflow-y-auto p-2 space-y-1">
+            <ul 
+              class="rounded max-h-40 overflow-y-auto p-2 space-y-1 border"
+              style="background-color: color-mix(in srgb, var(--text-color) 3%, transparent); border-color: color-mix(in srgb, var(--text-color) 10%, transparent);"
+            >
               {#each $workspacesStore[$currentWorkspaceIndex].task_exclude_headings as heading}
-                <li class="flex justify-between items-center text-sm p-1 hover:bg-black/10 rounded">
+                <li class="flex justify-between items-center text-sm p-1.5 rounded hover:bg-[color-mix(in_srgb,var(--text-color)_6%,transparent)]">
                   <span class="truncate opacity-80" title={heading}>{heading}</span>
-                  <button class="text-red-400 hover:text-red-500 font-bold px-2" on:click={() => removeExcludeHeading(heading)}>×</button>
+                  <button 
+                    class="px-2 py-0.5 rounded opacity-60 hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--text-color)_12%,transparent)] transition font-bold" 
+                    title="解除"
+                    on:click={() => removeExcludeHeading(heading)}>×</button>
                 </li>
               {/each}
             </ul>
           {:else}
-            <div class="text-sm opacity-50 p-2 border border-black/20 rounded bg-black/5">除外されている見出しはありません</div>
+            <div 
+              class="text-sm opacity-60 p-3 rounded border text-center"
+              style="background-color: color-mix(in srgb, var(--text-color) 2%, transparent); border-color: color-mix(in srgb, var(--text-color) 8%, transparent);"
+            >除外されている見出しはありません</div>
           {/if}
         </div>
 
-        <hr class="border-black/10 mb-6">
+        <hr class="mb-6 border-0 border-t" style="border-color: color-mix(in srgb, var(--text-color) 10%, transparent);">
         <div class="mb-6">
           <div class="text-sm opacity-80 mb-2">タグの管理</div>
           <div class="flex gap-2 mb-4">
-            <input type="text" class="flex-1 bg-black/10 border border-black/20 rounded p-2 text-sm outline-none" bind:value={newTagInput} placeholder="新しいタグ名を入力" on:keydown={(e) => e.key === 'Enter' && addTag()} />
-            <button class="px-4 py-2 bg-black/20 hover:bg-black/30 rounded text-sm transition" on:click={addTag}>登録</button>
+            <input 
+              type="text" 
+              class="flex-1 rounded p-2 text-sm outline-none border transition focus:border-[var(--accent-color)]" 
+              style="background-color: var(--bg-color); color: var(--text-color); border-color: color-mix(in srgb, var(--text-color) 15%, transparent);"
+              bind:value={newTagInput} 
+              placeholder="新しいタグ名を入力" 
+              on:keydown={(e) => e.key === 'Enter' && addTag()} 
+            />
+            <button 
+              class="px-4 py-2 rounded text-sm transition hover:bg-[color-mix(in_srgb,var(--text-color)_14%,transparent)] border"
+              style="background-color: color-mix(in srgb, var(--text-color) 8%, transparent); border-color: color-mix(in srgb, var(--text-color) 12%, transparent); color: var(--text-color);"
+              on:click={addTag}
+            >登録</button>
           </div>
           <div class="flex gap-2">
-            <select class="flex-1 border border-black/20 rounded p-2 text-sm outline-none" style="background-color: var(--bg-color); color: var(--text-color);" bind:value={selectedTagToRemove}>
+            <select 
+              class="flex-1 rounded p-2 text-sm outline-none border" 
+              style="background-color: var(--bg-color); color: var(--text-color); border-color: color-mix(in srgb, var(--text-color) 15%, transparent);" 
+              bind:value={selectedTagToRemove}
+            >
               <option value="" disabled selected>登録済みのタグ一覧</option>
               {#each $registeredTags as tag}<option value={tag}>{tag}</option>{/each}
             </select>
-            <button class="px-4 py-2 bg-red-900/50 hover:bg-red-900/80 text-red-100 rounded text-sm transition" on:click={removeTag}>削除</button>
+            <button 
+              class="px-4 py-2 rounded text-sm transition hover:bg-[color-mix(in_srgb,var(--text-color)_14%,transparent)] border"
+              style="background-color: color-mix(in srgb, var(--text-color) 8%, transparent); border-color: color-mix(in srgb, var(--text-color) 12%, transparent); color: var(--text-color);"
+              on:click={removeTag}
+            >削除</button>
           </div>
         </div>
 
