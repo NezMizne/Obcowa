@@ -230,9 +230,10 @@ function remarkObsidianExtensions() {
                 const matchedStr = match[0];
                 if (matchedStr.startsWith('==') && matchedStr.endsWith('==')) {
                     const innerText = matchedStr.slice(2, -2);
+                    const formattedText = innerText.replace(/\r?\n/g, '<br>');
                     newNodes.push({
                         type: 'html',
-                        value: `<mark class="obsidian-highlight">${innerText}</mark>`
+                        value: `<mark class="obsidian-highlight">${formattedText}</mark>`
                     });
                 } else if (matchedStr.startsWith('![[') && matchedStr.endsWith(']]')) {
                     const innerText = matchedStr.slice(3, -2);
@@ -570,7 +571,6 @@ export async function parseMarkdown(content: string, tabPath: string, options: P
     const processor = unified()
         .use(remarkParse)
         .use(remarkGfm)                    // テーブル等の構文拡張は必ずパース直後に行う
-        .use(remarkBreaks)                 // Enter 1回を <br> に変換
         .use(remarkFrontmatter, ['yaml'])
         .use(remarkEscapeUserHtml)         // ユーザ起因のタグを無害化(既存仕様維持)
         .use(remarkPropertiesCard, { showProperties: showProperties && !extractHeading && !extractBlock }) // 抽出時はプロパティ非表示
@@ -579,6 +579,7 @@ export async function parseMarkdown(content: string, tabPath: string, options: P
         .use(remarkCallouts)               // Calloutのパース
         .use(remarkTags)                   // 本文中の #タグ のパース
         .use(remarkObsidianExtensions)
+        .use(remarkBreaks)                 // Enter 1回を <br> に変換（拡張記法パース後に適用）
         .use(remarkHeadings)
         .use(remarkCodeBlocks)
         .use(remarkRehype, { allowDangerousHtml: true }) // 生成したHTMLノードを許可
