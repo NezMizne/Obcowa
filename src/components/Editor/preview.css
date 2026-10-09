@@ -518,27 +518,33 @@
     --callout-blend-color: var(--accent-color);
     margin: 1.5rem 0;
     border-radius: 4px;
-    background-color: color-mix(in srgb, var(--callout-blend-color) 4%, var(--bg-color));
-    border: 1px solid color-mix(in srgb, var(--callout-blend-color) 20%, var(--bg-color));
+    background-color: color-mix(in srgb, var(--callout-color, var(--callout-blend-color)) 5%, var(--bg-color));
+    border: 1px solid color-mix(in srgb, var(--callout-color, var(--callout-blend-color)) 20%, var(--bg-color));
+    border-left: 4px solid var(--callout-color, var(--callout-blend-color));
     overflow: hidden;
 }
 
 /* ===================================================
-   情報・メモ系（Note / Abstract / Info / ToDo / Tip）: 水色ベース
+   情報・メモ系（Note / Info / ToDo）: 青ベース
    =================================================== */
 .editor-preview .obsidian-callout[data-callout="note"],
+.editor-preview .obsidian-callout[data-callout="info"],
+.editor-preview .obsidian-callout[data-callout="todo"] {
+  --callout-color: #2e6df4;
+
+}
+
+/* ===================================================
+   情報・メモ系（Abstract / Tip）: 水色ベース
+   =================================================== */
 .editor-preview .obsidian-callout[data-callout="abstract"],
 .editor-preview .obsidian-callout[data-callout="summary"],
 .editor-preview .obsidian-callout[data-callout="tldr"],
-.editor-preview .obsidian-callout[data-callout="info"],
-.editor-preview .obsidian-callout[data-callout="todo"],
 .editor-preview .obsidian-callout[data-callout="tip"],
 .editor-preview .obsidian-callout[data-callout="hint"],
 .editor-preview .obsidian-callout[data-callout="important"] {
-  --callout-base-color: #0284c7;
-  background-color: color-mix(in srgb, var(--callout-base-color) 5%, var(--bg-color));
-  border-color: color-mix(in srgb, var(--callout-base-color) 20%, var(--bg-color));
-  border-left-color: var(--callout-base-color);
+  --callout-color: #05b9dd;
+
 }
 
 /* ===================================================
@@ -551,11 +557,7 @@
 .editor-preview .obsidian-callout[data-callout="danger"],
 .editor-preview .obsidian-callout[data-callout="bug"] {
 
-  --callout-base-color-red: #e53935;
-
-  background-color: color-mix(in srgb, var(--callout-base-color-red) 5%, var(--bg-color));
-  border-color: color-mix(in srgb, var(--callout-base-color-red) 20%, var(--bg-color));
-  border-left-color: var(--callout-base-color-red);
+  --callout-color: #e53935;
 }
 
 /* ===================================================
@@ -564,10 +566,7 @@
 .editor-preview .obsidian-callout[data-callout="success"],
 .editor-preview .obsidian-callout[data-callout="done"],
 .editor-preview .obsidian-callout[data-callout="check"] {
-  --callout-base-color: #4caf50;
-  background-color: color-mix(in srgb, var(--callout-base-color) 5%, var(--bg-color));
-  border-color: color-mix(in srgb, var(--callout-base-color) 20%, var(--bg-color));
-  border-left-color: var(--callout-base-color);
+  --callout-color: #4caf50;
 }
 
 /* ===================================================
@@ -579,10 +578,17 @@
 .editor-preview .obsidian-callout[data-callout="question"],
 .editor-preview .obsidian-callout[data-callout="help"],
 .editor-preview .obsidian-callout[data-callout="faq"] {
-  --callout-base-color: #ea580c;
-  background-color: color-mix(in srgb, var(--callout-base-color) 5%, var(--bg-color));
-  border-color: color-mix(in srgb, var(--callout-base-color) 20%, var(--bg-color));
-  border-left-color: var(--callout-base-color);
+  --callout-color: #e1a219;
+}
+
+/* ===================================================
+   その他（Example / Quote / Cite）
+   =================================================== */
+.editor-preview .obsidian-callout[data-callout="example"],
+.editor-preview .obsidian-callout[data-callout="quote"],
+.editor-preview .obsidian-callout[data-callout="cite"] {
+  --callout-color: #b3b7b97a;
+
 }
 
 .editor-preview .callout-title {
@@ -590,8 +596,20 @@
     align-items: center;
     padding: 0.75rem 1rem;
     gap: 0.4rem;
-    font-weight: 600;
-    color: color-mix(in srgb, var(--callout-blend-color) 90%, var(--text-color));
+    font-weight: 500;
+    color: color-mix(in srgb, var(--callout-blend-color) 60%, var(--text-color));
+}
+
+/* タイトル文字色およびアイコン色を !important で確実に適用（内部要素も対象） */
+.editor-preview .obsidian-callout .callout-title,
+.editor-preview .obsidian-callout .callout-title-inner,
+.editor-preview .obsidian-callout .callout-icon {
+    color: color-mix(in srgb, var(--callout-color) 60%, var(--text-color)) !important;
+ }
+
+ /* アイコン（SVG）の線の色を直接強制適用 */
+.editor-preview .obsidian-callout .callout-icon svg {
+    stroke: var(--callout-color, color-mix(in srgb, var(--callout-blend-color) 90%, var(--text-color))) !important;
 }
 
 .editor-preview .obsidian-callout[data-callout-fold] .callout-title {
@@ -604,52 +622,11 @@
     background-color: color-mix(in srgb, var(--text-color) 4%, transparent);
 }
 
-/* 水色系のアイコン・タイトル色 */
-.editor-preview .obsidian-callout[data-callout="note"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="abstract"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="summary"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="tldr"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="info"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="todo"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="tip"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="hint"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="important"] .callout-title {
-  color: color-mix(in srgb, var(--callout-base-color) 85%, var(--text-color));
-}
-
-/* 完了・成功系のアイコン・タイトル色 */
-.editor-preview .obsidian-callout[data-callout="success"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="done"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="check"] .callout-title {
-  color: color-mix(in srgb, var(--callout-base-color) 85%, var(--text-color));
-}
-
-/* 警告系のアイコン・タイトル色 */
-.editor-preview .obsidian-callout[data-callout="failure"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="error"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="fail"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="missing"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="danger"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="bug"] .callout-title {
-  color: color-mix(in srgb, var(--callout-base-color-red) 85%, var(--text-color));
-}
-
-/* 注意・質問系のアイコン・タイトル色 */
-.editor-preview .obsidian-callout[data-callout="warning"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="question"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="caution"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="attention"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="help"] .callout-title,
-.editor-preview .obsidian-callout[data-callout="faq"] .callout-title {
-  /* 文字色はコントラストを保つため、ベース色85%＋テキスト色15%で濃いめに抽出 */
-  color: color-mix(in srgb, var(--callout-base-color) 85%, var(--text-color));
-}
-
 .editor-preview .callout-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.8;
+    opacity: 0.9;
 }
 
 .editor-preview .callout-title-inner {
