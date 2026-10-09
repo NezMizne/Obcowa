@@ -59,18 +59,24 @@ export async function loadEmbedsInDom(container: HTMLElement, currentFilePath: s
                 });
                 const safeHtml = sanitizeHtml(rawHtml);
 
-                // タイトル表示（見出しやブロック指定があればそれも表示）
-                let titleDisplay = targetName;
-                if (heading) titleDisplay += ` > ${heading}`;
-                else if (blockId) titleDisplay += ` > ^${blockId}`;
 
-                placeholder.innerHTML = `
-                    <div class="obsidian-embed-header">
-                        <span class="obsidian-embed-title obsidian-wiki-link" data-wiki-target="${targetName}">${titleDisplay}</span>
-                        <a href="#" class="obsidian-embed-link obsidian-wiki-link" data-wiki-target="${targetName}" title="開く">${LINK_ICON_SVG}</a>
-                    </div>
-                    <div class="obsidian-embed-content editor-preview">${safeHtml}</div>
-                `;
+                // ブロックID指定時はヘッダー（ファイル名・見出し）を非表示にし、文章のみ展開（Obsidian仕様準拠）
+                if (blockId) {
+                    placeholder.innerHTML = `
+                        <div class="obsidian-embed-content editor-preview">${safeHtml}</div>
+                    `;
+                } else {
+                    let titleDisplay = targetName;
+                    if (heading) titleDisplay += ` > ${heading}`;
+
+                    placeholder.innerHTML = `
+                        <div class="obsidian-embed-header">
+                            <span class="obsidian-embed-title obsidian-wiki-link" data-wiki-target="${targetName}">${titleDisplay}</span>
+                            <a href="#" class="obsidian-embed-link obsidian-wiki-link" data-wiki-target="${targetName}" title="開く">${LINK_ICON_SVG}</a>
+                        </div>
+                        <div class="obsidian-embed-content editor-preview">${safeHtml}</div>
+                    `;
+                }
 
                 // 埋め込んだコンテンツの中に「さらに埋め込み」があるか再帰的に処理
                 const contentContainer = placeholder.querySelector<HTMLElement>('.obsidian-embed-content');

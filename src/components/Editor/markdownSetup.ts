@@ -265,11 +265,23 @@ function remarkObsidianExtensions() {
                     const innerText = matchedStr.slice(3, -2);
                     const parts = innerText.split('|');
 
-                    // ファイル名、見出し(#)、ブロックID(^)を分解
-                    const linkMatch = parts[0].match(/^([^#\^]+)(?:#([^#\^]+))?(?:\^([^#\^]+))?/);
-                    const rawTarget = linkMatch ? linkMatch[1].trim() : parts[0].trim();
-                    const heading = linkMatch && linkMatch[2] ? linkMatch[2].trim() : '';
-                    const blockId = linkMatch && linkMatch[3] ? linkMatch[3].trim() : '';
+
+                    // ファイル名、見出し(#)、ブロックID(#^ または ^)を分解
+                    let rawTarget = parts[0].trim();
+                    let heading = '';
+                    let blockId = '';
+
+                    const blockMatch = rawTarget.match(/#?\^([A-Za-z0-9_-]+)$/);
+                    if (blockMatch) {
+                        blockId = blockMatch[1].trim();
+                        rawTarget = rawTarget.slice(0, blockMatch.index).trim();
+                    }
+
+                    const headingMatch = rawTarget.match(/#([^#]+)$/);
+                    if (headingMatch) {
+                        heading = headingMatch[1].trim();
+                        rawTarget = rawTarget.slice(0, headingMatch.index).trim();
+                    }
 
                     const targetName = rawTarget.split(/[/\\]/).pop() || rawTarget; // パスを除去
                     const sizeAttr = parts.length > 1 ? ` width="${parts[1].trim()}"` : ' class="max-w-full h-auto"';
