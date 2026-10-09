@@ -520,7 +520,7 @@
     border-radius: 4px;
     background-color: color-mix(in srgb, var(--callout-color, var(--callout-blend-color)) 5%, var(--bg-color));
     border: 1px solid color-mix(in srgb, var(--callout-color, var(--callout-blend-color)) 20%, var(--bg-color));
-    border-left: 4px solid var(--callout-color, var(--callout-blend-color));
+    border-left: 2px solid var(--callout-color, var(--callout-blend-color));
     overflow: hidden;
 }
 
