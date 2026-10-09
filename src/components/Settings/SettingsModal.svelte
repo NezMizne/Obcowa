@@ -4,7 +4,7 @@
   import ThemeSettings from './ThemeSettings.svelte';
   import StyleSettings from './StyleSettings.svelte';
   import { activeStyleSlot, customStyleSlots, defaultStyle, applyStyleToRoot } from '../../features/styleSettings/styleStore';
-  import { activeTheme, type Theme } from '../../lib/settings/theme';
+  import { activeTheme, type Theme, applyThemeToRoot } from '../../lib/settings/theme';
   import { editorFont, registeredTags, workspacesStore, currentWorkspaceIndex } from '../../lib/stores';
   import { open as openDialog } from '@tauri-apps/plugin-dialog';
 
@@ -19,6 +19,13 @@
   let activeSettingsTab = 'general';
   
   let tempTheme: Theme = { ...$activeTheme };
+
+    // テーマが変更されたら即座に画面へ反映し、保存する（Obsidian風リアルタイムプレビュー）
+  $: if (tempTheme) {
+    applyThemeToRoot(tempTheme);
+    $activeTheme = { ...tempTheme };
+    localStorage.setItem('activeTheme', JSON.stringify(tempTheme));
+  }
 
     // スタイルの編集用の一時データ
   let tempStyle = JSON.parse(JSON.stringify($activeStyleSlot));
