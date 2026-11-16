@@ -12,6 +12,7 @@ A03_Obcowa/
 ├── .vscode
 │   ├── extensions.json
 │   └── settings.json
+├── AGENTS.md
 ├── LICENSE.md
 ├── README.md
 ├── THIRD_PARTY_LICENSES.txt

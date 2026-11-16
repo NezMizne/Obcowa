@@ -44,44 +44,112 @@
 <div class="h-full flex flex-col">
     <h2 class="text-lg font-bold mb-4">スタイル設定</h2>
 
-    <!-- スロット選択 -->
-    <div class="mb-6 flex gap-4 items-center border-b border-black/10 pb-4">
-        <div class="text-sm font-bold opacity-80">適用するスロット:</div>
-        <select class="flex-1 bg-black/10 border border-black/20 rounded p-2 text-sm outline-none" style="color: var(--text-color);" bind:value={editingSlotId} on:change={handleSlotChange}>
-            <option value="default" style="background: var(--bg-color);">デフォルトスタイル</option>
+
+    <!-- スロット選択 (Obsidian風のヘッダー設定項目) -->
+    <div class="flex items-center justify-between py-3 border-b mb-4" style="border-color: color-mix(in srgb, var(--text-color) 10%, transparent);">
+        <div>
+            <div class="text-sm font-medium">適用するスロット</div>
+            <div class="text-xs opacity-60">スタイルのプリセットまたはカスタムスロットを選択します</div>
+        </div>
+        <select 
+            class="rounded p-1.5 text-sm outline-none border transition w-48 focus:border-[var(--accent-color)]" 
+            style="background-color: var(--bg-color); color: var(--text-color); border-color: color-mix(in srgb, var(--text-color) 15%, transparent);" 
+            bind:value={editingSlotId} 
+            on:change={handleSlotChange}
+        >
+            <option value="default" style="background-color: var(--bg-color); color: var(--text-color);">デフォルトスタイル</option>
             {#each tempCustomSlots as slot}
-                <option value={slot.id} style="background: var(--bg-color);">{slot.name}</option>
+                 <option value={slot.id} style="background-color: var(--bg-color); color: var(--text-color);">{slot.name}</option>
             {/each}
         </select>
     </div>
-
+                        {#if editingSlotId === 'default'}
+                <div class="text-xs opacity-60 mt-3" style="color: color-mix(in srgb, var(--accent-color) 80%, var(--text-color));">
+                    ※ デフォルトスタイルは固定です。スロット１〜３を選択してカスタマイズしてください。
+                </div>
+            {/if}
     <!-- 編集エリア（デフォルト選択時はリードオンリー風にするため半透明化） -->
     <div class="flex-1 overflow-y-auto pr-2 space-y-6 pb-8" class:opacity-50={editingSlotId === 'default'} class:pointer-events-none={editingSlotId === 'default'}>
         
-        <!-- エディタ全体の設定 -->
-        <div class="bg-black/5 p-4 rounded border border-black/10">
-            <div class="text-sm font-bold mb-3">エディタ全体の設定</div>
-            <div class="grid grid-cols-2 gap-4">
+
+        <!-- エディタ全体の設定 (Obsidian風リスト形式) -->
+        <div 
+            class="p-4 rounded border"
+            style="background-color: color-mix(in srgb, var(--text-color) 3%, transparent); border-color: color-mix(in srgb, var(--text-color) 10%, transparent);"
+        >
+            <div class="text-sm font-bold mb-1">エディタ全体の設定</div>
+            <div class="text-xs opacity-60 mb-2">フォントや行間など、エディタの基本スタイルを設定します</div>
+
+            <!-- フォント名 -->
+            <div class="flex items-center justify-between py-2.5 border-b" style="border-color: color-mix(in srgb, var(--text-color) 8%, transparent);">
                 <div>
-                    <div class="text-xs opacity-70 mb-1">フォント名</div>
-                    <input type="text" class="w-full bg-black/10 border border-black/20 rounded p-1.5 text-sm outline-none" bind:value={tempStyle.editorFont} placeholder="sans-serif, 'Meiryo'..." />
+                    <div class="text-sm font-medium">フォント名</div>
+                    <div class="text-xs opacity-60">カンマ区切りで複数指定可能</div>
                 </div>
+                <input 
+                    type="text" 
+                    class="w-56 rounded p-1.5 text-sm outline-none border transition focus:border-[var(--accent-color)]" 
+                    style="background-color: var(--bg-color); color: var(--text-color); border-color: color-mix(in srgb, var(--text-color) 15%, transparent);"
+                    bind:value={tempStyle.editorFont} 
+                    placeholder="sans-serif, Meiryo..." 
+                />
+            </div>
+
+            <!-- フォントサイズ -->
+            <div class="flex items-center justify-between py-2.5 border-b" style="border-color: color-mix(in srgb, var(--text-color) 8%, transparent);">
                 <div>
-                    <div class="text-xs opacity-70 mb-1">フォントサイズ (px)</div>
-                    <input type="number" min="8" max="48" class="w-full bg-black/10 border border-black/20 rounded p-1.5 text-sm outline-none" bind:value={tempStyle.editorFontSize} />
+                    <div class="text-sm font-medium">フォントサイズ</div>
+                    <div class="text-xs opacity-60">本文テキストの大きさ (px)</div>
                 </div>
+                <div class="flex items-center gap-1.5">
+                    <input 
+                        type="number" 
+                        min="8" 
+                        max="48" 
+                        class="w-20 rounded p-1.5 text-sm outline-none border text-right transition focus:border-[var(--accent-color)]" 
+                        style="background-color: var(--bg-color); color: var(--text-color); border-color: color-mix(in srgb, var(--text-color) 15%, transparent);"
+                        bind:value={tempStyle.editorFontSize} 
+                    />
+                    <span class="text-xs opacity-60">px</span>
+                </div>
+            </div>
+
+            <!-- 行間 -->
+            <div class="flex items-center justify-between py-2.5">
                 <div>
-                    <div class="text-xs opacity-70 mb-1">行間 (倍率)</div>
-                    <input type="number" step="0.1" min="1.0" max="3.0" class="w-full bg-black/10 border border-black/20 rounded p-1.5 text-sm outline-none" bind:value={tempStyle.lineHeight} />
+                    <div class="text-sm font-medium">行間</div>
+                    <div class="text-xs opacity-60">行の高さの倍率</div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <input 
+                        type="number" 
+                        step="0.1" 
+                        min="1.0" 
+                        max="3.0" 
+                        class="w-20 rounded p-1.5 text-sm outline-none border text-right transition focus:border-[var(--accent-color)]" 
+                        style="background-color: var(--bg-color); color: var(--text-color); border-color: color-mix(in srgb, var(--text-color) 15%, transparent);"
+                        bind:value={tempStyle.lineHeight} 
+                    />
+                    <span class="text-xs opacity-60">倍</span>
                 </div>
             </div>
         </div>
 
-        <!-- 見出しの設定 -->
-        <div class="bg-black/5 p-4 rounded border border-black/10">
-            <div class="text-sm font-bold mb-3">見出しのスタイル設定</div>
+        <!-- 見出しの設定 (Obsidian風テーブル形式) -->
+        <div 
+            class="p-4 rounded border"
+            style="background-color: color-mix(in srgb, var(--text-color) 3%, transparent); border-color: color-mix(in srgb, var(--text-color) 10%, transparent);"
+        >
+            <div class="flex items-center justify-between mb-1">
+                <div class="text-sm font-bold">見出しのスタイル設定</div>
+                {#if editingSlotId === 'default'}
+                    <span class="text-xs px-2 py-0.5 rounded opacity-70" style="background-color: color-mix(in srgb, var(--text-color) 10%, transparent);">読み取り専用</span>
+                {/if}
+            </div>
+            <div class="text-xs opacity-60 mb-3">各見出しレベル（H1〜H6）のサイズと装飾を設定します</div>
             
-            <div class="flex flex-col gap-2">
+            <div class="flex flex-col">
+
                 <!-- Svelteのリアクティビティを確実にするため、各要素を直接バインドします -->
                 {#each [
                     { label: 'H1', item: tempStyle.h1 },
@@ -91,32 +159,56 @@
                     { label: 'H5', item: tempStyle.h5 },
                     { label: 'H6', item: tempStyle.h6 }
                 ] as h}
-                    <div class="flex items-center gap-3 text-sm py-1 border-b border-black/5 last:border-0 hover:bg-black/5 px-2 rounded">
-                        <div class="w-6 font-bold">{h.label}</div>
+                     
+                    <div 
+                        class="flex items-center justify-between py-2 border-b last:border-b-0 px-2 rounded transition-colors hover:bg-[color-mix(in_srgb,var(--text-color)_6%,transparent)]"
+                        style="border-color: color-mix(in srgb, var(--text-color) 8%, transparent);"
+                    >
+                        <!-- 見出しラベル（Obsidian風アクセントピル） -->
+                        <span 
+                            class="text-xs font-bold px-2 py-0.5 rounded text-center w-8"
+                            style="background-color: color-mix(in srgb, var(--accent-color) 15%, transparent); color: color-mix(in srgb, var(--accent-color) 80%, var(--text-color));"
+                        >
+                            {h.label}
+                        </span>
                         
-                        <div class="flex items-center gap-1 w-24">
-                            <input type="number" step="0.1" min="0.5" max="5.0" class="w-14 bg-black/10 border border-black/20 rounded px-1 py-1 outline-none text-right" bind:value={h.item.fontSize} />
-                            <span class="opacity-60 text-xs">rem</span>
+
+                        <!-- コントロール（サイズ + 下線/太字/斜体） -->
+                        <div class="flex items-center gap-5">
+                            <div class="flex items-center gap-1">
+                                <input 
+                                    type="number" 
+                                    step="0.1" 
+                                    min="0.5" 
+                                    max="5.0" 
+                                    class="w-16 rounded p-1 text-sm outline-none text-right border transition focus:border-[var(--accent-color)]" 
+                                    style="background-color: var(--bg-color); color: var(--text-color); border-color: color-mix(in srgb, var(--text-color) 15%, transparent);"
+                                    bind:value={h.item.fontSize} 
+                                />
+                                <span class="opacity-60 text-xs">rem</span>
+                            </div>
+
+                            <div class="flex items-center gap-3 text-sm select-none">
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" class="cursor-pointer" style="accent-color: var(--accent-color);" bind:checked={h.item.borderBottom} />
+                                    <span class="text-xs">下線</span>
+                                </label>
+
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" class="cursor-pointer" style="accent-color: var(--accent-color);" bind:checked={h.item.bold} />
+                                    <span class="text-xs font-bold">太字</span>
+                                </label>
+
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" class="cursor-pointer" style="accent-color: var(--accent-color);" bind:checked={h.item.italic} />
+                                    <span class="text-xs italic">斜体</span>
+                                </label>
+                            </div>
                         </div>
-
-                        <label class="flex items-center gap-1 cursor-pointer ml-2">
-                            <input type="checkbox" bind:checked={h.item.borderBottom} />
-                            <span>下線</span>
-                        </label>
-
-                        <label class="flex items-center gap-1 cursor-pointer ml-2">
-                            <input type="checkbox" bind:checked={h.item.bold} />
-                            <span>太字</span>
-                        </label>
-
-                        <label class="flex items-center gap-1 cursor-pointer ml-2">
-                            <input type="checkbox" bind:checked={h.item.italic} />
-                            <span>斜体</span>
-                        </label>
                     </div>
                 {/each}
             </div>
-            <div class="text-xs opacity-50 mt-3">※ デフォルトスタイルは編集できません。スロット１〜３を選択して編集してください。</div>
+
         </div>
     </div>
 </div>
