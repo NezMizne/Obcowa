@@ -11,6 +11,7 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "tauri": "tauri",
     "doc:map": "node scripts/generate_filemap.js",
+    "doc:tauri": "node scripts/generate_tauri_types.js",
     "prepare": "git config core.hooksPath .githooks"
   },
   "license": "MIT",

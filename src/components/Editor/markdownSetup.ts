@@ -580,6 +580,8 @@ function renderPropertiesCard(yamlText: string): string {
 
 /**
  * 危険なスクリプト等を除去した安全なHTMLを生成する
+ * ⚠️ 注意: 下の parseMarkdown() で独自タグや data-* 属性を追加した場合は、
+ * 必ずここの ADD_TAGS / ADD_ATTR にも追記すること（未登録の属性は除去されます）。
  */
 export function sanitizeHtml(rawHtml: string): string {
     return DOMPurify.sanitize(rawHtml, {
@@ -602,6 +604,10 @@ export interface ParseOptions {
 
 /**
  * Markdown文字列をパースしてHTMLに変換するメイン関数
+ * ⚠️ 拡張時チェックリスト:
+ * 1. プラグインの順序依存（remarkGfmはパース直後 / remarkBreaksは独自拡張の後 / rehypeTaskListsはrehypeRawの後）を崩さないこと。
+ * 2. 新しいHTMLタグや data-* 属性を増やしたら、上の sanitizeHtml() の ADD_TAGS / ADD_ATTR も更新し、
+ *    markdownSetup.test.ts でサニタイズ後に属性が残ることを検証すること。
  */
 export async function parseMarkdown(content: string, tabPath: string, options: ParseOptions = {}): Promise<string> {
     const { showProperties = false, extractHeading, extractBlock } = options;

@@ -1,9 +1,13 @@
 #!/bin/sh
 
-# 1. ドキュメント生成スクリプトを実行
+# 1. Tauri型定義・IPCマップ自動生成スクリプトを実行
+node scripts/generate_tauri_types.js
+
+# 2. ドキュメント生成スクリプトを実行
 node scripts/generate_filemap.js
 
-# 2. 生成されたファイルをコミットに含める
-git add docs/02_file-map.md
+# 3. 生成されたファイルをコミットに含める
+git add src/lib/tauri/generated.ts docs/02_file-map.md
+
 
 
