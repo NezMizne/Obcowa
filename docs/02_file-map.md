@@ -2,6 +2,8 @@
 
 ```
 A03_Obcowa/
+├── .clineignore
+├── .clinerules
 ├── .githooks
 │   ├── _pre-push
 │   └── pre-commit
@@ -22,7 +24,9 @@ A03_Obcowa/
 ├── scripts
 │   ├── generate_filemap.js
 │   ├── generate_filemap.test.js
-│   └── generate_licenses.js
+│   ├── generate_licenses.js
+│   ├── generate_tauri_types.js
+│   └── generate_tauri_types.test.js
 ├── src
 │   ├── app.css
 │   ├── app.html
@@ -33,6 +37,7 @@ A03_Obcowa/
 │   │   │   ├── EditorPreview.svelte
 │   │   │   ├── EditorSearch.svelte
 │   │   │   ├── TabBar.svelte
+│   │   │   ├── markdownSetup.test.ts
 │   │   │   ├── markdownSetup.ts
 │   │   │   ├── preview.css
 │   │   │   ├── previewExtensions.test.ts
@@ -95,6 +100,8 @@ A03_Obcowa/
 │   │   ├── task
 │   │   │   ├── taskService.test.ts
 │   │   │   └── taskService.ts
+│   │   ├── tauri
+│   │   │   └── generated.ts
 │   │   ├── utils
 │   │   │   ├── pathUtils.ts
 │   │   │   ├── queryParser.ts
@@ -162,6 +169,15 @@ A03_Obcowa/
   └── import path
   └── import url
 
+📄 `scripts/generate_tauri_types.js`
+  └── import fs
+  └── import path
+  └── import @tauri-apps/api/core
+
+📄 `scripts/generate_tauri_types.test.js`
+  └── import vitest
+  └── import ./generate_tauri_types.js
+
 📄 `src/components/Editor/Editor.svelte`
   └── import $lib/stores
   └── import @tauri-apps/api/core
@@ -220,6 +236,10 @@ A03_Obcowa/
   └── import svelte
   └── import ../../lib/utils/pathUtils
   └── import ../../lib/editor/fileManager
+
+📄 `src/components/Editor/markdownSetup.test.ts`
+  └── import vitest
+  └── import ./markdownSetup
 
 📄 `src/components/Editor/markdownSetup.ts`
   └── import dompurify
@@ -461,6 +481,9 @@ A03_Obcowa/
   └── import ../workspace/treeUtils
   └── import ../editor/fileManager
 
+📄 `src/lib/tauri/generated.ts`
+  └── import @tauri-apps/api/core
+
 📄 `src/lib/utils/queryParser.ts`
   └── import moo
 
@@ -573,6 +596,10 @@ A03_Obcowa/
 - `scripts/generate_filemap.test.js` : （説明未記載）
 - `scripts/generate_licenses.js` : 依存ライブラリのライセンス全文を収集し、THIRD_PARTY_LICENSES.txt を自動生成するスクリプト
   - `export function generateThirdPartyLicenses()`
+- `scripts/generate_tauri_types.js` : Rust側のデータモデルと#[tauri::command]を解析し、TypeScriptの型定義・IPCマップを自動生成する
+  - `export const Parser`
+  - `export function generateTauriTypes()`
+- `scripts/generate_tauri_types.test.js` : （説明未記載）
 
 ### src/components/Editor/
 - `src/components/Editor/Editor.svelte` : エディタ画面を統括する親部品
@@ -587,6 +614,7 @@ A03_Obcowa/
 - `src/components/Editor/TabBar.svelte` : --- START OF src/components/Editor/TabBar.svelte ---
   - `export let handleTabClick`
   - `export let handleTabClose`
+- `src/components/Editor/markdownSetup.test.ts` : markdownSetup.ts（MarkdownパースとDOMPurifyサニタイズ統合パイプライン）の単体テスト
 - `src/components/Editor/markdownSetup.ts` : Markdown文字列や独自ウィジェットなどを安全なHTMLに変換する
   - `export function removeFrontmatter(content: string)`
   - `export function sanitizeHtml(rawHtml: string)`
@@ -783,6 +811,21 @@ A03_Obcowa/
   - `export async function fetchWorkspaceTasks(nodes: any[], options?: TaskScanOptions)`
   - `export async function completeTaskStatus(task: Task, completed: boolean = true)`
   - `export function sortTaskTreeNodes(nodes: any[], sortOption: SortOption)`
+
+### src/lib/tauri/
+- `src/lib/tauri/generated.ts` : Rust側のデータモデルおよびTauri IPCコマンドの自動生成型定義（手動編集禁止）
+  - `export interface PinnedItem`
+  - `export interface LinkItem`
+  - `export interface SavedTab`
+  - `export type SmartCondition`
+  - `export interface SmartRules`
+  - `export type VirtualNode`
+  - `export interface Workspace`
+  - `export interface SearchResultItem`
+  - `export interface Task`
+  - `export interface ScanOptions`
+  - `export interface TauriCommandMap`
+  - `export type TauriCommandName`
 
 ### src/lib/utils/
 - `src/lib/utils/pathUtils.ts` : アプリ内の特殊なパス（仮想タブ）の判定を共通化する

@@ -11,14 +11,38 @@ Obsidianを母艦として、プロジェクトごとにワークスペースを
 ファイル・ワークスペースが消えないこと、Obsidianの管理に干渉しないことを優先する。
 
 ## 絶対ルール（AIへの指示）
-- **テーマ対応**: Tailwindで `bg-gray-700` のような具体的な色指定は禁止。必ず以下のCSS変数を使うこと。
+- **Svelte 4 / 5 記法の統一ルール**:
+  - `package.json` 上の `svelte` は v5 だが、`.svelte` コンポーネントはすべて **Svelte 4 記法**（`export let`, `$:`, `createEventDispatcher`, `on:click` 等）で統一すること。
+  - `.svelte` ファイル内で Svelte 5 Runes（`$state`, `$derived`, `$effect`, `$props`）は使用しないこと（既存コードとの混在を防ぐため）。
+  - 例外: `src/features/Dashboard/DashboardManager.ts` の動的マウント処理でのみ Svelte 5 の `mount` / `unmount` API を使用している。
+
+- **データモデル・Tauri IPC 参照ルール**:
+  - Rust 側（`src-tauri/src/models.rs` および各 `#[tauri::command]`）の型定義・引数名（camelCase変換済み）・戻り値型は、自動生成ファイル `src/lib/tauri/generated.ts` に一元化されている。
+  - 新規実装で `Workspace`, `VirtualNode`, `Task` 等を扱う場合は独自に型を再定義したり `any` を使ったりせず、`src/lib/tauri/generated.ts` からインポートすること。
+  - 新規に Tauri コマンドを呼び出す場合は、まず `src/lib/tauri/generated.ts` の `TauriCommandMap` / `invokeCommand` を参照・使用すること（ただし下記の `save_workspaces` / `save_file_content` 直呼び出し禁止ルールは厳守）。
+  - Rust 側のモデルやコマンドを変更した際は、`npm run doc:tauri`（または `pre-commit` フック）で `src/lib/tauri/generated.ts` を同期すること。
+
+- **テーマ・スタイル対応（CSS変数一覧）**:
+  - Tailwind で `bg-gray-700` のような具体的な色指定は禁止。必ず以下の CSS 変数を使うこと。
+  - 定義元: テーマ色は `src/lib/settings/theme.ts`、エディタ文字・見出しスタイルは `src/features/styleSettings/styleStore.ts`。
 【使用可能なCSS変数一覧】
-  - `var(--bg-color)` : メイン背景色
-  - `var(--text-color)` : メイン文字色
-  - `var(--menu-bg)` : メニューやサイドバーの背景色
-  - `var(--active-highlight-bg)` : ホバー時や選択時の背景色
-  - `var(--accent-color)` : ボタンやアイコンのアクセントカラー
-  - `var(--selection-bg)`：文字を選択したときの背景色
+  - テーマ色（`theme.ts`）:
+    - `var(--bg-color)` : メイン背景色
+    - `var(--text-color)` : メイン文字色
+    - `var(--menu-bg)` : メニューやサイドバーの背景色
+    - `var(--active-highlight-bg)` : ホバー時や選択時の背景色
+    - `var(--accent-color)` : ボタンやアイコンのアクセントカラー
+    - `var(--selection-bg)` : 文字を選択したときの背景色
+    - `var(--scroll-bg)` : スクロールバーのトラック背景色
+    - `var(--scroll-thumb)` : スクロールバーのつまみ色
+  - エディタ・見出しスタイル（`styleStore.ts`）:
+    - `var(--editor-font)` : エディタフォントファミリー
+    - `var(--editor-font-size)` : エディタ文字サイズ（px）
+    - `var(--editor-line-height)` : エディタ行間
+    - `var(--h1-size)` 〜 `var(--h6-size)` : 各見出しの文字サイズ（rem）
+    - `var(--h1-border)` 〜 `var(--h6-border)` : 各見出しの下線
+    - `var(--h1-style)` 〜 `var(--h6-style)` : 各見出しの斜体設定（`italic` / `normal`）
+    - `var(--h1-weight)` 〜 `var(--h6-weight)` : 各見出しの太字設定（`bold` / `normal`）
 ※半透明にしたい場合は `color-mix(in srgb, var(--text-color) 20%, transparent)` のようにすること。
 アクセントカラーを文字色に使うときは、テキスト色を混ぜる
 例：color-mix(in srgb, var(--accent-color) 80%, var(--text-color))
@@ -54,6 +78,10 @@ Tauri APIはOS・ウィンドウ・ネイティブ機能との境界に限定し
   3. **アクション係（ `previewExtensions.ts` ）**: 
      - 役割: プレビュー画面でのユーザークリック等のイベントを処理する。
      - 厳守事項: 画面上のDOM操作（見出しの折りたたみ等）、Tauriやストアを動かすアプリロジック（リンクを開く等）、元のMarkdownテキストの書き換え（タスクのチェック等）はここに集約すること。
+  - **Markdown パイプライン順序 & DOMPurify 拡張手順（重要）**:
+    - `src/components/Editor/markdownSetup.ts` の `unified` パイプラインは順序依存がある。特に `remarkGfm` は `remarkParse` 直後、`remarkBreaks` は独自記法（Callout・Wikiリンク・タグ等）のパース後に配置すること。
+    - 独自記法で新しい HTML タグや `data-*` 属性を出力する場合は、**同じファイル内の `sanitizeHtml()` にある DOMPurify ホワイトリスト（`ADD_TAGS`, `ADD_ATTR`）にも必ず追記すること**（追記しないとサニタイズ時に属性・タグが除去される）。
+    - 拡張・変更時は `src/components/Editor/markdownSetup.test.ts` にテストを追加し、サニタイズ後も期待するタグと属性が残ることを検証すること。
 
 - 特殊パス（仮想タブ）はsrc/lib/utils/pathUtils.tsで管理する。新しい機能を作ったらここに追記。
 - 既存のコードでリファクタリングできそうな部分（責務の分離など）があれば教えてください
