@@ -1,5 +1,6 @@
 <script lang="ts">
   import { activeTheme, customThemes, defaultThemes, type Theme } from '../../lib/settings/theme';
+  import { STORAGE_KEYS } from '../../lib/settings/storageKeys';
   import { get } from 'svelte/store';
 
   export let tempTheme: Theme;
@@ -18,7 +19,7 @@
       const updated = get(customThemes);
       updated[index] = { ...tempTheme, id: selectedCustomSlot, name: updated[index].name };
       customThemes.set(updated);
-      localStorage.setItem('customThemes', JSON.stringify(updated));
+      localStorage.setItem(STORAGE_KEYS.CUSTOM_THEMES, JSON.stringify(updated));
       alert('カスタムテーマを保存しました');
     }
   }

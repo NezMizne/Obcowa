@@ -22,6 +22,7 @@ A03_Obcowa/
 ├── package-lock.json
 ├── package.json
 ├── scripts
+│   ├── apply_patch.py
 │   ├── generate_filemap.js
 │   ├── generate_filemap.test.js
 │   ├── generate_licenses.js
@@ -94,6 +95,7 @@ A03_Obcowa/
 │   │   │   ├── scrollSync.test.ts
 │   │   │   └── scrollSync.ts
 │   │   ├── settings
+│   │   │   ├── storageKeys.ts
 │   │   │   ├── theme.tet.ts
 │   │   │   └── theme.ts
 │   │   ├── stores.ts
@@ -101,6 +103,7 @@ A03_Obcowa/
 │   │   │   ├── taskService.test.ts
 │   │   │   └── taskService.ts
 │   │   ├── tauri
+│   │   │   ├── events.ts
 │   │   │   └── generated.ts
 │   │   ├── utils
 │   │   │   ├── pathUtils.ts
@@ -112,6 +115,7 @@ A03_Obcowa/
 │   │       ├── menuUtils.ts
 │   │       ├── treeUtils.test.ts
 │   │       ├── treeUtils.ts
+│   │       ├── workspaceContext.ts
 │   │       ├── workspaceInit.ts
 │   │       └── workspaceManager.ts
 │   └── routes
@@ -149,6 +153,8 @@ A03_Obcowa/
 │   └── vite.svg
 ├── svelte.config.js
 ├── test-cases
+├── tmp
+│   └── verify.log
 ├── tsconfig.json
 └── vite.config.js
 ```
@@ -233,7 +239,7 @@ A03_Obcowa/
   └── import ../../features/ContextMenu.svelte
   └── import ../../lib/workspace/menuUtils
   └── import ../../lib/utils/tagUtils
-  └── import svelte
+  └── import ../../lib/workspace/workspaceContext
   └── import ../../lib/utils/pathUtils
   └── import ../../lib/editor/fileManager
 
@@ -285,6 +291,7 @@ A03_Obcowa/
   └── import svelte
   └── import @tauri-apps/plugin-dialog
   └── import ../../lib/stores
+  └── import ../../lib/tauri/generated
   └── import ../../lib/workspace/workspaceManager
 
 📄 `src/components/RightSidebar/OutlinePanel.svelte`
@@ -310,6 +317,7 @@ A03_Obcowa/
   └── import ./StyleSettings.svelte
   └── import ../../features/styleSettings/styleStore
   └── import ../../lib/settings/theme
+  └── import ../../lib/settings/storageKeys
   └── import ../../lib/stores
   └── import @tauri-apps/plugin-dialog
   └── import ../../lib/stores
@@ -322,6 +330,7 @@ A03_Obcowa/
 
 📄 `src/components/Settings/ThemeSettings.svelte`
   └── import ../../lib/settings/theme
+  └── import ../../lib/settings/storageKeys
   └── import svelte/store
 
 📄 `src/components/Settings/ThemeSettings.tst.ts`
@@ -340,6 +349,7 @@ A03_Obcowa/
   └── import @tauri-apps/plugin-dialog
   └── import lucide-svelte
   └── import ../../lib/stores
+  └── import ../../lib/tauri/generated
   └── import ../../lib/workspace/workspaceManager
 
 📄 `src/components/Sidebar/SidebarLinks.svelte`
@@ -357,6 +367,7 @@ A03_Obcowa/
   └── import @tauri-apps/api/core
   └── import ../lib/stores
   └── import svelte
+  └── import ../lib/workspace/workspaceContext
   └── import lucide-svelte
   └── import ../lib/utils/tagUtils
   └── import ../features/ContextMenu.svelte
@@ -413,8 +424,9 @@ A03_Obcowa/
 📄 `src/features/launcher/LauncherWindow.svelte`
   └── import svelte
   └── import @tauri-apps/api/core
-  └── import @tauri-apps/api/event
   └── import @tauri-apps/api/window
+  └── import ../../lib/tauri/generated
+  └── import ../../lib/tauri/events
 
 📄 `src/features/styleSettings/styleStore.test.ts`
   └── import vitest
@@ -423,6 +435,7 @@ A03_Obcowa/
 📄 `src/features/styleSettings/styleStore.ts`
   └── import svelte/store
   └── import ../../lib/stores
+  └── import ../../lib/settings/storageKeys
 
 📄 `src/lib/editor/diffUtils.ts`
   └── import diff
@@ -463,13 +476,16 @@ A03_Obcowa/
   └── import vitest
   └── import svelte/store
   └── import ./theme
+  └── import ./storageKeys
 
 📄 `src/lib/settings/theme.ts`
   └── import svelte/store
+  └── import ./storageKeys
 
 📄 `src/lib/stores.ts`
   └── import svelte/store
   └── import @tauri-apps/api/core
+  └── import ./tauri/generated
   └── import ./workspace/workspaceManager
 
 📄 `src/lib/task/taskService.test.ts`
@@ -480,6 +496,9 @@ A03_Obcowa/
   └── import @tauri-apps/api/core
   └── import ../workspace/treeUtils
   └── import ../editor/fileManager
+
+📄 `src/lib/tauri/events.ts`
+  └── import @tauri-apps/api/event
 
 📄 `src/lib/tauri/generated.ts`
   └── import @tauri-apps/api/core
@@ -500,20 +519,28 @@ A03_Obcowa/
 
 📄 `src/lib/workspace/treeUtils.ts`
   └── import @tauri-apps/api/core
+  └── import ../tauri/generated
+
+📄 `src/lib/workspace/workspaceContext.ts`
+  └── import svelte
+  └── import ../tauri/generated
 
 📄 `src/lib/workspace/workspaceInit.ts`
   └── import @tauri-apps/api/core
+  └── import ../tauri/generated
   └── import ../stores
   └── import ../utils/pathUtils
   └── import ./treeUtils
+  └── import ./workspaceManager
 
 📄 `src/lib/workspace/workspaceManager.ts`
   └── import svelte/store
   └── import @tauri-apps/api/core
   └── import @tauri-apps/api/event
+  └── import ../tauri/generated
+  └── import ../tauri/events
   └── import ../stores
-  └── import svelte/store
-  └── import ../stores
+  └── import ./workspaceContext
 
 📄 `src/routes/+page.svelte`
   └── import svelte
@@ -532,13 +559,17 @@ A03_Obcowa/
   └── import ../components/Sidebar/SidebarFooter.svelte
   └── import ../components/Sidebar/SidebarLinks.svelte
   └── import ../lib/settings/theme
+  └── import ../lib/settings/storageKeys
   └── import ../features/styleSettings/styleStore
   └── import ../lib/stores
   └── import @tauri-apps/api/event
+  └── import ../lib/tauri/events
   └── import ../features/launcher/LauncherWindow.svelte
   └── import ../lib/workspace/treeUtils
   └── import ../lib/utils/pathUtils
   └── import ../lib/workspace/workspaceManager
+  └── import ../lib/workspace/workspaceContext
+  └── import ../lib/tauri/generated
   └── import ../lib/workspace/workspaceInit
 
 📄 `src-tauri/src/dashboard_ops.rs`
@@ -734,7 +765,7 @@ A03_Obcowa/
 
 ### src/features/styleSettings/
 - `src/features/styleSettings/styleStore.test.ts` : （説明未記載）
-- `src/features/styleSettings/styleStore.ts` : （説明未記載）
+- `src/features/styleSettings/styleStore.ts` : エディタ・見出しスタイル設定のストアとCSS変数生成・適用ロジック
   - `export interface HeadingStyle`
   - `export interface StyleSlot`
   - `export const defaultStyle`
@@ -768,6 +799,9 @@ A03_Obcowa/
   - `export function calculateScrollTopFromRatio(ratio: number, scrollHeight: number)`
 
 ### src/lib/settings/
+- `src/lib/settings/storageKeys.ts` : 責務: アプリ全体で使用する localStorage のキー定数を一元管理する
+  - `export const STORAGE_KEYS`
+  - `export type StorageKey`
 - `src/lib/settings/theme.tet.ts` : （説明未記載）
 - `src/lib/settings/theme.ts` : テーマ設定のプリセット、起動時テーマ復元処理、テーマ適用
   - `export interface Theme`
@@ -783,8 +817,6 @@ A03_Obcowa/
   - `export const workspacesStore`
   - `export const openTabs`
   - `export const activeTabId`
-  - `export const workspaces`
-  - `export const currentWorkspace`
   - `export const editorFont`
   - `export const currentWorkspaceIndex`
   - `export const registeredTags`
@@ -813,6 +845,10 @@ A03_Obcowa/
   - `export function sortTaskTreeNodes(nodes: any[], sortOption: SortOption)`
 
 ### src/lib/tauri/
+- `src/lib/tauri/events.ts` : 責務: Tauri ウィンドウ間イベントの名前・ペイロード型・型安全な送受信ラッパーを一元管理する
+  - `export const APP_EVENTS`
+  - `export interface AppEventMap`
+  - `export type AppEventName`
 - `src/lib/tauri/generated.ts` : Rust側のデータモデルおよびTauri IPCコマンドの自動生成型定義（手動編集禁止）
   - `export interface PinnedItem`
   - `export interface LinkItem`
@@ -853,26 +889,33 @@ A03_Obcowa/
   - `export function getPinnedNode(pin: any, workspace: any)`
   - `export function getSortedNodes(nodes: any[], sortBy = 'name', sortOrder = 'asc')`
   - `export function groupNodesByCategory(nodes: any[], categoryOrder: string[] = [], sortBy = 'name', sortOrder = 'asc')`
-  - `export async function refreshTree(nodes: any[], workspaceNodes: any[], parentSortBy?: string, parentSortOrder?: string)`
+  - `export async function refreshTree(nodes: VirtualNode[], workspaceNodes: VirtualNode[], parentSortBy?: string, parentSortOrder?: string)`
   - `export function buildFilenameIndex(nodes: any[])`
   - `export function searchFilesByName(nodes: any[], query: string)`
   - `export function extractFilePaths(nodes: any[])`
+- `src/lib/workspace/workspaceContext.ts` : 責務: workspaceActions Context の識別キー・型契約・型安全な set/get ヘルパーを一元管理する
+  - `export interface NodeLike`
+  - `export type TreeVirtualNode`
+  - `export interface WorkspaceActionsContext`
+  - `export const WORKSPACE_ACTIONS_CONTEXT_KEY`
+  - `export function setWorkspaceActions(actions: WorkspaceActionsContext)`
+  - `export function getWorkspaceActions()`
+  - `export function getOptionalWorkspaceActions()`
 - `src/lib/workspace/workspaceInit.ts` : 責務: アプリ起動時におけるワークスペースの読み込み、タブ復元、初期バックグラウンド同期
-  - `export interface SavedTabInfo`
-  - `export async function restoreTabs(savedTabs: SavedTabInfo[])`
+  - `export async function restoreTabs(savedTabs: SavedTab[])`
   - `export async function initializeWorkspaceSession(searchQuery: string)`
 - `src/lib/workspace/workspaceManager.ts` : 責務: ワークスペースデータの永続化（他ウィンドウとの競合マージと保存の直列化）
   - `export function requestSaveWorkspaces(forceOverwrite = false)`
-  - `export function getNodePath(node: any)`
-  - `export async function removeNodeFromWorkspace(targetNode: any, ownerId: string)`
-  - `export function pinNodeToWorkspace(targetNode: any)`
+  - `export async function initWorkspaceSyncListener()`
+  - `export function getNodePath(node: NodeLike)`
+  - `export async function removeNodeFromWorkspace(targetNode: TreeVirtualNode, ownerId: string)`
+  - `export function pinNodeToWorkspace(targetNode: NodeLike)`
   - `export function unpinNodeFromWorkspace(path: string)`
-  - `export function isNodePinned(targetNode: any)`
+  - `export function isNodePinned(targetNode: NodeLike)`
   - `export function getWorkspaceClickBehavior()`
   - `export function getWorkspaceGlobalSort()`
-  - `export function setWorkspaceNodeSort(node: any, by: string, order: string)`
-  - `export function setNodeCategory(targetNode: any, newCategory: string)`
-  - `export function setWorkspaceNodeCategory(targetNode: any, newCategory: string)`
+  - `export function setWorkspaceNodeSort(node: TreeVirtualNode, by: string, order: string)`
+  - `export function setWorkspaceNodeCategory(targetNode: TreeVirtualNode, newCategory: string)`
 
 ### src/routes/
 - `src/routes/+layout.svelte` : （説明未記載）

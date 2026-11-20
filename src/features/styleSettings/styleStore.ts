@@ -1,5 +1,7 @@
+// エディタ・見出しスタイル設定のストアとCSS変数生成・適用ロジック
 import { writable } from 'svelte/store';
 import { editorFont } from '../../lib/stores'; // 既存のストアと同期させるため
+import { STORAGE_KEYS } from '../../lib/settings/storageKeys';
 
 export interface HeadingStyle {
     fontSize: number; // rem単位
@@ -93,7 +95,7 @@ export function initStyles() {
     if (typeof window === 'undefined') return;
 
     try {
-        const savedActive = localStorage.getItem('activeStyle');
+        const savedActive = localStorage.getItem(STORAGE_KEYS.ACTIVE_STYLE);
         if (savedActive) {
             const parsed = JSON.parse(savedActive);
             activeStyleSlot.set(parsed);
@@ -102,7 +104,7 @@ export function initStyles() {
             applyStyleToRoot(defaultStyle);
         }
 
-        const savedSlots = localStorage.getItem('customStyleSlots');
+        const savedSlots = localStorage.getItem(STORAGE_KEYS.CUSTOM_STYLE_SLOTS);
         if (savedSlots) {
             customStyleSlots.set(JSON.parse(savedSlots));
         }

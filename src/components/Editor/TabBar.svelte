@@ -6,7 +6,7 @@
   import ContextMenu from '../../features/ContextMenu.svelte';
   import { buildCommonFileMenu, type MenuItem } from '../../lib/workspace/menuUtils';
   import { extractTags, updateTagsInContent } from '../../lib/utils/tagUtils';
-  import { getContext } from 'svelte';
+  import { getOptionalWorkspaceActions } from '../../lib/workspace/workspaceContext';
   import { isSpecialPath } from '../../lib/utils/pathUtils';
   import { saveAndUpdateTab } from '../../lib/editor/fileManager';
 
@@ -15,7 +15,10 @@
   export let handleTabClose: (id: string) => void;
 
   // 💥 親からピン留め用の関数を受け取る（TreeNodeと同じ仕組み）
-  const { pinNode, unpinNode, checkIsPinned } = (getContext('workspaceActions') || {}) as any;
+  const workspaceActions = getOptionalWorkspaceActions();
+  const pinNode = workspaceActions?.pinNode;
+  const unpinNode = workspaceActions?.unpinNode;
+  const checkIsPinned = workspaceActions?.checkIsPinned;
 
   let tabMenu = { show: false, x: 0, y: 0, items: [] as MenuItem[], openSubLeft: false };
 

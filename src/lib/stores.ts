@@ -2,6 +2,7 @@
 
 import { writable, get } from 'svelte/store';
 import { invoke } from '@tauri-apps/api/core';
+import type { Workspace, SavedTab, SearchResultItem } from './tauri/generated';
 import { requestSaveWorkspaces } from './workspace/workspaceManager';
 
 export interface TabData {
@@ -17,12 +18,10 @@ export interface TabData {
     workspaceId?: string;  // 保存時にバックエンドへ送るためのID
 }
 
-export const workspacesStore = writable<any[]>([]);
+export const workspacesStore = writable<Workspace[]>([]);
 export const openTabs = writable<TabData[]>([]);
 export const activeTabId = writable<string | null>(null);
 
-export const workspaces = writable<any[]>([]);
-export const currentWorkspace = writable<any | null>(null);
 export const editorFont = writable<string>('sans-serif'); 
 export const currentWorkspaceIndex = writable<number>(0);
 
@@ -33,22 +32,12 @@ export const searchState = writable({
     query: '',
 
     searchByFilename: false, // 先ほど追加したファイル名検索フラグ
-    results: [] as any[],
+    results: [] as SearchResultItem[],
     hasSearched: false,
     sortKey: 'updated',
     sortOrder: 'desc',
     autoRunSearch: false, // 追加: 検索タブを開いた時に自動で検索を走らせるためのフラグ
 
-});
-
-currentWorkspace.subscribe(ws => {
-    if (ws) {
-        searchState.update(s => ({
-            ...s,
-            sortKey: ws.search_sort_by || 'updated',
-            sortOrder: ws.search_sort_order || 'desc'
-        }));
-    }
 });
 
 // 左メニュー（ツリー）のフォルダを自動展開するためのリクエスト保持ストア
@@ -65,7 +54,7 @@ export const expandTreeRequest = writable<{ path: string; timestamp: number } | 
    
    if (wsList.length === 0 || !wsList[currentWsIndex]) return;
  
-   const tabsToSave = get(openTabs).map(t => ({ 
+   const tabsToSave: SavedTab[] = get(openTabs).map(t => ({ 
      id: t.id, 
      path: t.path, 
      title: t.title, 
@@ -220,7 +209,7 @@ export async function openDashboardTab(workspaceId: string, workspaceName: strin
         // Tauriからダッシュボードの内容を読み込む
         const content = await invoke<string>('load_dashboard', { workspaceId });
         
-        const newTab = {
+        const newTab: TabData = {
             id: dashboardTabId,
             title: `Dashboard: ${workspaceName}`,
             content: content,
@@ -232,8 +221,7 @@ export async function openDashboardTab(workspaceId: string, workspaceName: strin
             workspaceId: workspaceId
         };
 
-        // as any で型の警告を一時的に回避（既存の型定義に影響を与えないため）
-        openTabs.update(t => [...t, newTab as any]);
+        openTabs.update(t => [...t, newTab]);
         activeTabId.set(newTab.id);
         syncTabsToWorkspace();
     } catch (error) {

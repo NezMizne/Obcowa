@@ -1,5 +1,6 @@
 // テーマ設定のプリセット、起動時テーマ復元処理、テーマ適用
 import { writable } from 'svelte/store';
+import { STORAGE_KEYS } from './storageKeys';
 
 export interface Theme {
     id: string;
@@ -50,7 +51,7 @@ export function initTheme() {
     if (typeof window === 'undefined') return;
 
     try {
-        const savedTheme = localStorage.getItem('activeTheme');
+        const savedTheme = localStorage.getItem(STORAGE_KEYS.ACTIVE_THEME);
         if (savedTheme) {
             let t = JSON.parse(savedTheme);
             t.menuBg = t.menuBg || '#111827';
@@ -58,17 +59,22 @@ export function initTheme() {
             activeTheme.set(t);
         }
         
-        const savedCustoms = localStorage.getItem('customThemes');
+        const savedCustoms = localStorage.getItem(STORAGE_KEYS.CUSTOM_THEMES);
         if (savedCustoms) {
-            let parsed = JSON.parse(savedCustoms);
+            let parsed: Partial<Theme>[] = JSON.parse(savedCustoms);
             if (parsed.length >= 3) {
                 parsed[0].id = 'custom1'; parsed[0].name = 'カスタム１';
                 parsed[1].id = 'custom2'; parsed[1].name = 'カスタム２';
                 parsed[2].id = 'custom3'; parsed[2].name = 'カスタム３';
             }
             // 💥 追加: selectionBg の補完も追加
-            parsed = parsed.map((t: any) => ({...t, menuBg: t.menuBg || '#111827', selectionBg: t.selectionBg || '#4b5563'}));
-            customThemes.set(parsed);
+            const normalized: Theme[] = parsed.map((t) => ({
+                ...defaultThemes[0],
+                ...t,
+                menuBg: t.menuBg || '#111827',
+                selectionBg: t.selectionBg || '#4b5563'
+            }));
+            customThemes.set(normalized);
         }
     } catch (e) {
         console.error("テーマの復元に失敗しました", e);

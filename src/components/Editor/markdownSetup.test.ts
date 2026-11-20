@@ -1,10 +1,5 @@
 // markdownSetup.ts（MarkdownパースとDOMPurifyサニタイズ統合パイプライン）の単体テスト
-import { describe, it, expect, vi } from 'vitest';
-
-vi.mock('@tauri-apps/api/event', () => ({
-    listen: vi.fn(() => Promise.resolve(() => {})),
-    emit: vi.fn(() => Promise.resolve())
-}));
+import { describe, it, expect } from 'vitest';
 
 import { parseMarkdown, sanitizeHtml, removeFrontmatter } from './markdownSetup';
 

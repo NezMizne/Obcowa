@@ -1,5 +1,6 @@
 // ワークスペースのノードツリー最新化およびスマートフォルダ評価、ワークスペースのファイル一覧取得
 import { invoke } from '@tauri-apps/api/core';
+import type { SearchResultItem, VirtualNode, Workspace } from '../tauri/generated';
 
 
 /**
@@ -94,8 +95,8 @@ function normalizePath(p: string | undefined | null): string {
 }
 
 // 親のソート設定を引き継ぐためのオプショナル引数を追加
-export async function refreshTree(nodes: any[], workspaceNodes: any[], parentSortBy?: string, parentSortOrder?: string): Promise<any[]> {
-  const updatedNodes = [];
+export async function refreshTree(nodes: VirtualNode[], workspaceNodes: VirtualNode[], parentSortBy?: string, parentSortOrder?: string): Promise<VirtualNode[]> {
+  const updatedNodes: VirtualNode[] = [];
 
   for (let node of nodes) {
     if (node.type === 'Folder' && node.original_path) {
@@ -105,43 +106,49 @@ export async function refreshTree(nodes: any[], workspaceNodes: any[], parentSor
 
       if (node.smart_rules) {
         try {
-          const children = await invoke('evaluate_smart_folder', { 
+          const children = await invoke<VirtualNode[]>('evaluate_smart_folder', { 
             rules: node.smart_rules, 
             workspaceNodes 
           });
-          node.children = children as any[];
-        } catch {}
+          node.children = children;
+        } catch (e) {
+          console.error('Failed to evaluate smart folder:', e);
+        }
       } else {
         try {
           // 💥 1. 自身のソート設定を使ってディスクから中身を読み込む
-          let freshChildren: any[] = await invoke('read_directory', { 
+          let freshChildren = await invoke<VirtualNode[]>('read_directory', { 
               path: node.original_path,
               sortBy: currentSortBy || null,
               sortOrder: currentSortOrder || null
           });
           // 💥 2. 以前の階層情報をパスで引けるようにMap化
-          const oldChildrenMap = new Map();
+          const oldChildrenMap = new Map<string, VirtualNode>();
           if (node.children) {
             for (const c of node.children) {
-               const key = normalizePath(c.original_path || c.path || c.name);
+              const key = normalizePath((c.type === 'Folder' ? c.original_path : c.path) || c.name);
               oldChildrenMap.set(key, c);
             }
           }
           // 💥 3. ディスクから読んだ新しいアイテムに、前回の設定（sort_by, category等）を完全に復元
           for (let fresh of freshChildren) {
-            const freshKey = normalizePath(fresh.original_path || fresh.path || fresh.name);
-            if (oldChildrenMap.has(freshKey)) {
-              const old = oldChildrenMap.get(freshKey);
+            const freshKey = normalizePath((fresh.type === 'Folder' ? fresh.original_path : fresh.path) || fresh.name);
+            const old = oldChildrenMap.get(freshKey);
+            if (old) {
               fresh.name = old.name;
-              fresh.sort_by = old.sort_by;
-              fresh.sort_order = old.sort_order;
               fresh.category = old.category;
-              fresh.children = old.children || [];
+              if (fresh.type === 'Folder' && old.type === 'Folder') {
+                fresh.sort_by = old.sort_by;
+                fresh.sort_order = old.sort_order;
+                fresh.children = old.children || [];
+              }
             }
           }
           // 💥 4. 設定が復元された freshChildren を次の階層へ渡して再帰処理を行う
           node.children = await refreshTree(freshChildren, workspaceNodes, currentSortBy, currentSortOrder);
-        } catch (e) {}
+        } catch (e) {
+          console.error('Failed to refresh directory:', e);
+        }
       }
     }
     updatedNodes.push(node);
@@ -151,10 +158,10 @@ export async function refreshTree(nodes: any[], workspaceNodes: any[], parentSor
 
 // ワークスペースと関連ライブラリのノードをマージして取得する共通関数
 export function getWorkspaceNodes(
-    workspaces: any[],
+    workspaces: Workspace[],
     workspaceIndex: number,
-
-): any[] {
+    _includeLibraries?: boolean
+): VirtualNode[] {
     const currentWs = workspaces[workspaceIndex];
     if (!currentWs) return [];
 
@@ -194,8 +201,8 @@ export function buildFilenameIndex(nodes: any[]): Map<string, any[]> {
  * JS側で完結する高速なファイル名部分一致検索。
  * Rustに巨大なJSONを送らずに、検索タブ用の結果配列を生成します。
  */
-export function searchFilesByName(nodes: any[], query: string): any[] {
-    const results: any[] = [];
+export function searchFilesByName(nodes: any[], query: string): SearchResultItem[] {
+    const results: SearchResultItem[] = [];
     const queryLower = query.trim().toLowerCase();
     if (!queryLower) return results;
 
@@ -204,7 +211,13 @@ export function searchFilesByName(nodes: any[], query: string): any[] {
             if (node.type === 'File') {
                 const name = node.name || node.title || node.path?.split(/[/\\]/).pop() || '';
                 if (name.toLowerCase().includes(queryLower)) {
-                    results.push({ path: node.path || node.original_path, name, snippet: "(ファイル名に一致)" });
+                    results.push({
+                        path: node.path || node.original_path,
+                        name,
+                        snippet: "(ファイル名に一致)",
+                        created_at: node.created || 0,
+                        updated_at: node.modified || 0
+                    });
                 }
             } else if (node.type === 'Folder' && node.children) {
                 traverse(node.children);

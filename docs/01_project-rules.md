@@ -59,6 +59,14 @@ Obsidianを母艦として、プロジェクトごとにワークスペースを
     - `requestSaveFile()`: 単純にファイルを保存したい場合、または保存用の一連のプロセス（競合ダイアログ等）に組み込む場合に使用する。
     - `saveAndUpdateTab()`: サイドバーや右クリックメニューなどからの「直接操作」でファイルを保存し、かつ**もしそのファイルがタブで開かれていればStoreの情報（内容や更新日時）も一括で安全（イミュータブル）に最新化したい**場合に使用する。
 
+- **状態管理・永続化・イベントの参照先（Single Source of Truth）**:
+  各仕組みの定義・型・定数は以下のソースコードに一元化されている。新規実装や修正時は直書きや独自定義を避け、正となるファイルを直接参照すること。
+  - **グローバルストア（Store / `TabData`）**: `src/lib/stores.ts`（ワークスペースデータは `workspacesStore` を単一ソースとする）
+  - **ワークスペース生成・永続化・同期**: `src/lib/workspace/workspaceManager.ts`（`createDefaultWorkspace`, `requestSaveWorkspaces`, `initWorkspaceSyncListener`）
+  - **Context（`workspaceActions`）**: `src/lib/workspace/workspaceContext.ts`（`WorkspaceActionsContext`, `setWorkspaceActions`, `getWorkspaceActions`, `getOptionalWorkspaceActions`）
+  - **`localStorage` キー定数**: `src/lib/settings/storageKeys.ts`（`STORAGE_KEYS`）
+  - **Tauri ウィンドウ間イベント**: `src/lib/tauri/events.ts`（`APP_EVENTS`, `AppEventMap`, `emitAppEvent`, `listenAppEvent`）
+
 - **ファイルの配置ルール（Co-locationの原則）**:
   - 単一のコンポーネントでしか使わないロジック・テストは、そのコンポーネントと同じディレクトリ内に配置すること（例: `src/components/Editor/previewExtensions.ts`）。
   - アプリから独立した大きな画面や機能ユニット（ランチャーや設定等）、フォルダの違う複数コンポーネントから呼び出される処理は `src/features/機能名/` 配下にまとめること。

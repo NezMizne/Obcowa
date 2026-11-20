@@ -1,20 +1,15 @@
 // 責務: アプリ起動時におけるワークスペースの読み込み、タブ復元、初期バックグラウンド同期
 import { invoke } from '@tauri-apps/api/core';
-import { workspacesStore, currentWorkspaceIndex, openTabs, activeTabId, type TabData } from '../stores';
+import type { SavedTab, Workspace } from '../tauri/generated';
+import { workspacesStore, currentWorkspaceIndex, openTabs, activeTabId, searchState, type TabData } from '../stores';
 import { isSpecialPath, isDashboardPath, getWorkspaceIdFromDashboardPath } from '../utils/pathUtils';
 import { refreshTree } from './treeUtils';
-
-export interface SavedTabInfo {
-  id: string;
-  path?: string;
-  title: string;
-  isEditing?: boolean;
-}
+import { createDefaultWorkspace } from './workspaceManager';
 
 /**
  * 保存されていたタブ情報を元に、各ファイル/ダッシュボードの内容を読み込んでTabData配列を復元します。
  */
-export async function restoreTabs(savedTabs: SavedTabInfo[]): Promise<TabData[]> {
+export async function restoreTabs(savedTabs: SavedTab[]): Promise<TabData[]> {
   const restored: TabData[] = [];
 
   for (const tab of savedTabs) {
@@ -60,24 +55,17 @@ export async function restoreTabs(savedTabs: SavedTabInfo[]): Promise<TabData[]>
  * 起動時のワークスペース読み込み、タブの即時復元、バックグラウンドでのツリー更新を行います。
  */
 export async function initializeWorkspaceSession(searchQuery: string): Promise<void> {
-  let loadedWorkspaces: any[] = await invoke('load_workspaces');
+  let loadedWorkspaces = await invoke<Workspace[]>('load_workspaces');
 
   // 初期ワークスペースのフォールバック
   if (loadedWorkspaces.length === 0) {
-    loadedWorkspaces = [{
-      id: Date.now().toString(),
-      name: '作業中',
-      category: 'Active',
-      nodes: [],
-      links: [],
-      pinned: [],
-      linked_libraries: [],
-      is_flat: false,
-      open_in_new_tab: false,
-      saved_tabs: [],
-      active_tab_id: null,
-      editor_font: 'sans-serif'
-    }];
+    loadedWorkspaces = [
+      createDefaultWorkspace({
+        id: Date.now().toString(),
+        name: '作業中',
+        category: 'Active',
+      })
+    ];
   }
 
   // URLパラメータ(?ws=0など)または最初のアクティブワークスペースから初期インデックスを決定
@@ -87,7 +75,7 @@ export async function initializeWorkspaceSession(searchQuery: string): Promise<v
   if (wsParam !== null) {
     startWsIndex = parseInt(wsParam, 10);
   } else {
-    const firstActive = loadedWorkspaces.findIndex((w: any) => w.category === 'Active');
+    const firstActive = loadedWorkspaces.findIndex((w) => w.category === 'Active');
     if (firstActive !== -1) startWsIndex = firstActive;
   }
 
@@ -95,12 +83,20 @@ export async function initializeWorkspaceSession(searchQuery: string): Promise<v
   workspacesStore.set(loadedWorkspaces);
   currentWorkspaceIndex.set(startWsIndex);
 
-  // ツリー最新化を待たずに、保存されていたタブを即時復元
+  // ツリー最新化を待たずに、保存されていたタブと検索ソート設定を即時復元
   const ws = loadedWorkspaces[startWsIndex];
-  if (ws && ws.saved_tabs && ws.saved_tabs.length > 0) {
-    const restoredTabs = await restoreTabs(ws.saved_tabs);
-    openTabs.set(restoredTabs);
-    activeTabId.set(ws.active_tab_id || (restoredTabs[0] ? restoredTabs[0].id : null));
+  if (ws) {
+    searchState.update(s => ({
+      ...s,
+      sortKey: ws.search_sort_by || 'updated',
+      sortOrder: ws.search_sort_order || 'desc'
+    }));
+
+    if (ws.saved_tabs && ws.saved_tabs.length > 0) {
+      const restoredTabs = await restoreTabs(ws.saved_tabs);
+      openTabs.set(restoredTabs);
+      activeTabId.set(ws.active_tab_id || (restoredTabs[0] ? restoredTabs[0].id : null));
+    }
   }
 
   // バックグラウンドでツリーを最新化

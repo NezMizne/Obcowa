@@ -1,7 +1,7 @@
 <!-- アプリのメイン画面（ガワ）。全体のデータとモーダル状態を管理。 -->
 
 <script lang="ts">
-  import { setContext, onMount, onDestroy, tick } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
   import { open as openDialog, confirm as tauriConfirm } from '@tauri-apps/plugin-dialog';
   import { openUrl } from '@tauri-apps/plugin-opener';
@@ -17,13 +17,17 @@
   import SidebarFooter from '../components/Sidebar/SidebarFooter.svelte';
   import SidebarLinks from '../components/Sidebar/SidebarLinks.svelte';
   import { activeTheme, initTheme, applyThemeToRoot } from '../lib/settings/theme';
+  import { STORAGE_KEYS } from '../lib/settings/storageKeys';
   import { initStyles } from '../features/styleSettings/styleStore'; 
   import { editorFont, openTabs, activeTabId, currentWorkspaceIndex, openSearchTab, registeredTags, showLauncherOnStartup, workspacesStore } from '../lib/stores';
-  import { listen } from '@tauri-apps/api/event';
+  import type { UnlistenFn } from '@tauri-apps/api/event';
+  import { APP_EVENTS, listenAppEvent } from '../lib/tauri/events';
   import LauncherWindow from '../features/launcher/LauncherWindow.svelte';
   import { refreshTree } from '../lib/workspace/treeUtils';
   import { isSpecialPath, isDashboardPath, getWorkspaceIdFromDashboardPath } from '../lib/utils/pathUtils';
-  import { requestSaveWorkspaces, removeNodeFromWorkspace, pinNodeToWorkspace, unpinNodeFromWorkspace,   isNodePinned, getWorkspaceClickBehavior, getWorkspaceGlobalSort,  setWorkspaceNodeSort, getNodePath } from '../lib/workspace/workspaceManager';
+  import { requestSaveWorkspaces, initWorkspaceSyncListener, removeNodeFromWorkspace, pinNodeToWorkspace, unpinNodeFromWorkspace, isNodePinned, getWorkspaceClickBehavior, getWorkspaceGlobalSort, setWorkspaceNodeSort, getNodePath } from '../lib/workspace/workspaceManager';
+  import { setWorkspaceActions, type TreeVirtualNode } from '../lib/workspace/workspaceContext';
+  import type { LinkItem, VirtualNode } from '../lib/tauri/generated';
   import { initializeWorkspaceSession } from '../lib/workspace/workspaceInit';
 
   let isLauncherWindow = false;
@@ -45,7 +49,7 @@
   let isCreateModalOpen = false, isManageModalOpen = false;
   // 💥フォルダ追加メニューとスマートフォルダ関連
   let isAddFolderMenuOpen = false, isSmartFolderModalOpen = false;
-  let editingSmartNode: any = null;
+  let editingSmartNode: TreeVirtualNode | null = null;
 
   let editingListIndex = 0;
 
@@ -58,22 +62,21 @@
       isSettingsOpen = true;
   }
 
-  setContext('workspaceActions', {
-
+  setWorkspaceActions({
     removeNode: removeNodeFromWorkspace,
     pinNode: pinNodeToWorkspace,
-    unpinNode: (targetNode: any) => unpinNodeFromWorkspace(getNodePath(targetNode)),
+    unpinNode: (targetNode) => unpinNodeFromWorkspace(getNodePath(targetNode)),
     checkIsPinned: isNodePinned,
     getClickBehavior: getWorkspaceClickBehavior,
     saveWorkspace: () => requestSaveWorkspaces(true),
 
     // 💥 新規追加: ツリーから編集モードを呼び出す
-    editSmartFolder: (node: any) => {
+    editSmartFolder: (node) => {
       editingSmartNode = node;
       isSmartFolderModalOpen = true;
     },
     
-    openNewFileModal: (dirPath: string, callback: () => void) => {
+    openNewFileModal: (dirPath, callback) => {
       newFileTargetDir = dirPath;
       newFileCallback = callback;
       isNewFileModalOpen = true;
@@ -91,7 +94,7 @@
    // 最新のツリー情報を取得
    const refreshedMainNodes = await refreshTree(currentWs.nodes, currentWs.nodes);
    const linkedLibs = currentWs.linked_libraries || [];
-   const libUpdates = [];
+   const libUpdates: Array<{ index: number; nodes: VirtualNode[] }> = [];
    
     if (linkedLibs && linkedLibs.length > 0) {
       for (const libId of linkedLibs) {
@@ -116,6 +119,9 @@
 
     await requestSaveWorkspaces();
   }
+  let unlistenWorkspaceSync: UnlistenFn | null = null;
+  let unlistenWorkspaceSelected: UnlistenFn | null = null;
+
   onMount(async () => {
 
     // このウィンドウがランチャー用として開かれたかどうかの判定
@@ -125,16 +131,14 @@
     }
 
     try {
-      const savedTags = localStorage.getItem('registeredTags');
+      const savedTags = localStorage.getItem(STORAGE_KEYS.REGISTERED_TAGS);
       if (savedTags) registeredTags.set(JSON.parse(savedTags));
-      
-      // ローカルストレージから画像フォルダパスを復元する
-      const savedImageFolder = localStorage.getItem('imageFolderPath');
-      if (savedImageFolder) imageFolderPath.set(savedImageFolder);
-    } catch (e) {}
+    } catch (e) {
+      console.error('登録済みタグの復元に失敗しました:', e);
+    }
 
     // ランチャー設定と状態の読み込み
-    const launcherSetting = localStorage.getItem('showLauncherOnStartup') === 'true';
+    const launcherSetting = localStorage.getItem(STORAGE_KEYS.SHOW_LAUNCHER_ON_STARTUP) === 'true';
     showLauncherOnStartup.set(launcherSetting);
     
     // URLに ?ws= があるか（＝ランチャーから選択されてリロードされた後かどうか）
@@ -145,8 +149,8 @@
         await invoke('open_launcher');
         
         // ランチャーからの選択を待ち、選ばれたらリロードする
-        await listen('workspace-selected', (event: any) => {
-            window.location.href = `/?ws=${event.payload.index}`;
+        unlistenWorkspaceSelected = await listenAppEvent(APP_EVENTS.WORKSPACE_SELECTED, (payload) => {
+            window.location.href = `/?ws=${payload.index}`;
         });
         
         // メイン画面は隠したまま、ここで処理を終了（裏で無駄なファイル読み込みをさせないため）
@@ -157,6 +161,7 @@
     initStyles(); 
 
     try {
+      unlistenWorkspaceSync = await initWorkspaceSyncListener();
 
      // ワークスペース読み込み、タブ復元、ツリー同期を実行
       await initializeWorkspaceSession(window.location.search);
@@ -172,13 +177,18 @@
     }
   });
 
+  onDestroy(() => {
+    unlistenWorkspaceSync?.();
+    unlistenWorkspaceSelected?.();
+  });
+
 
 
 
   async function deleteLink(id: string) {
        workspacesStore.update(wsList => {
      if (wsList[$currentWorkspaceIndex]) {
-       wsList[$currentWorkspaceIndex].links = (wsList[$currentWorkspaceIndex].links || []).filter((l: any) => l.id !== id);
+       wsList[$currentWorkspaceIndex].links = (wsList[$currentWorkspaceIndex].links || []).filter((l: LinkItem) => l.id !== id);
      }
      return wsList;
    });
@@ -289,12 +299,12 @@ let isSettingsOpen = false;
     const currentWs = wsList[$currentWorkspaceIndex];
       if (!currentWs) return wsList;
 
-    if (editingSmartNode) {
+    if (editingSmartNode && editingSmartNode.type === 'Folder') {
       editingSmartNode.name = name;
       editingSmartNode.smart_rules = rules;
       editingSmartNode.children = children;
     } else {
-      const newNode = { type: "Folder", name, original_path: rules.target_dir || "__workspace__", children, smart_rules: rules };
+      const newNode: VirtualNode = { type: "Folder", name, original_path: rules.target_dir || "__workspace__", children, smart_rules: rules };
       currentWs.nodes = [...(currentWs.nodes || []), newNode];
     }
      return wsList;

@@ -1,8 +1,41 @@
 // 責務: ワークスペースデータの永続化（他ウィンドウとの競合マージと保存の直列化）
 import { get } from 'svelte/store';
 import { invoke } from '@tauri-apps/api/core';
-import { emit, listen } from '@tauri-apps/api/event';
+import type { UnlistenFn } from '@tauri-apps/api/event';
+import type { VirtualNode, Workspace } from '../tauri/generated';
+import { APP_EVENTS, emitAppEvent, listenAppEvent } from '../tauri/events';
 import { workspacesStore, currentWorkspaceIndex } from '../stores';
+import type { NodeLike, TreeVirtualNode } from './workspaceContext';
+
+/**
+ * Workspace 型の必須フィールドを補完したデフォルトオブジェクトを生成します。
+ */
+export function createDefaultWorkspace(
+    overrides: Partial<Workspace> & Pick<Workspace, 'id' | 'name'>
+): Workspace {
+    return {
+        category: 'Active',
+        nodes: [],
+        links: [],
+        pinned: [],
+        linked_libraries: [],
+        is_flat: false,
+        open_in_new_tab: false,
+        saved_tabs: [],
+        active_tab_id: null,
+        editor_font: 'sans-serif',
+        category_order: [],
+        sort_by: 'name',
+        sort_order: 'asc',
+        search_sort_by: 'updated',
+        search_sort_order: 'desc',
+        task_exclude_paths: null,
+        task_exclude_headings: null,
+        image_folders: null,
+        show_properties: null,
+        ...overrides,
+    };
+}
 
 // 保存処理を直列化するためのPromiseキュー
 let saveQueue: Promise<void> = Promise.resolve();
@@ -21,23 +54,23 @@ export function requestSaveWorkspaces(forceOverwrite = false): Promise<void> {
 
             if (forceOverwrite) {
                 await invoke('save_workspaces', { workspaces });
-                await emit('workspaces-updated');
+                await emitAppEvent(APP_EVENTS.WORKSPACES_UPDATED);
                 return;
             }
 
             // 最新の保存データを読み込み（他ウィンドウや別処理での変更を拾う）
-            const latestWorkspaces: any[] = await invoke('load_workspaces');
+            const latestWorkspaces = await invoke<Workspace[]>('load_workspaces');
             
             const currentWs = workspaces[currentIndex];
 
             if (!currentWs) {
                 await invoke('save_workspaces', { workspaces });
-                await emit('workspaces-updated');
+                await emitAppEvent(APP_EVENTS.WORKSPACES_UPDATED);
                 return;
             }
 
             // 💥 IDを基準にして、現在開いているワークスペースのみを安全にマージ
-            const targetIndex = latestWorkspaces.findIndex((w: any) => w.id === currentWs.id);
+            const targetIndex = latestWorkspaces.findIndex((w) => w.id === currentWs.id);
             if (targetIndex !== -1) {
                 latestWorkspaces[targetIndex] = currentWs;
                 await invoke('save_workspaces', { workspaces: latestWorkspaces });
@@ -47,13 +80,13 @@ export function requestSaveWorkspaces(forceOverwrite = false): Promise<void> {
                 await invoke('save_workspaces', { workspaces: latestWorkspaces });
             }
             // 他の全ウィンドウに変更を通知
-            await emit('workspaces-updated');
+            await emitAppEvent(APP_EVENTS.WORKSPACES_UPDATED);
         } catch (e) {
             console.error('Workspace save failed, falling back to force overwrite:', e);
             // エラー時はフェールセーフとして強制保存（データの完全喪失を防ぐ）
             const workspaces = get(workspacesStore);
             await invoke('save_workspaces', { workspaces });
-            await emit('workspaces-updated').catch(() => {});
+            await emitAppEvent(APP_EVENTS.WORKSPACES_UPDATED).catch(() => {});
         }
     }).catch(e => {
         console.error('Error in save queue:', e);
@@ -62,11 +95,13 @@ export function requestSaveWorkspaces(forceOverwrite = false): Promise<void> {
     return saveQueue;
 }
 
-// --- ウィンドウ間でのリアルタイム同期リスナー ---
-if (typeof window !== 'undefined') {
-    listen('workspaces-updated', async () => {
+/**
+ * ウィンドウ間でのワークスペース更新通知リスナーを初期化します。
+ */
+export async function initWorkspaceSyncListener(): Promise<UnlistenFn> {
+    return listenAppEvent(APP_EVENTS.WORKSPACES_UPDATED, async () => {
         try {
-            const latestWorkspaces: any[] = await invoke('load_workspaces');
+            const latestWorkspaces = await invoke<Workspace[]>('load_workspaces');
             const currentList = get(workspacesStore);
             const currentIndex = get(currentWorkspaceIndex);
             const currentWs = currentList[currentIndex];
@@ -76,7 +111,7 @@ if (typeof window !== 'undefined') {
 
             // 他ウィンドウでの追加/削除でインデックスがズレても、今開いているワークスペースを見失わないよう補正
             if (currentWs) {
-                const newIndex = latestWorkspaces.findIndex((w: any) => w.id === currentWs.id);
+                const newIndex = latestWorkspaces.findIndex((w) => w.id === currentWs.id);
                 if (newIndex !== -1) {
                     currentWorkspaceIndex.set(newIndex);
                 }
@@ -90,18 +125,20 @@ if (typeof window !== 'undefined') {
 
  // --- ワークスペース・ツリー操作のビジネスロジック ---
 
- export function getNodePath(node: any): string {
-   return node.type === 'Folder' ? node.original_path : node.path;
+ export function getNodePath(node: NodeLike): string {
+   return (node.type === 'Folder' ? node.original_path : node.path) || '';
  }
 
- export async function removeNodeFromWorkspace(targetNode: any, ownerId: string): Promise<void> {
+ export async function removeNodeFromWorkspace(targetNode: TreeVirtualNode, ownerId: string): Promise<void> {
    workspacesStore.update(wsList => {
      const wsIndex = wsList.findIndex(w => w.id === ownerId);
      if (wsIndex === -1) return wsList;
 
-     function filterOutNode(nodes: any[]): any[] {
+     function filterOutNode(nodes: VirtualNode[]): VirtualNode[] {
        return nodes.filter(n => n !== targetNode).map(n => {
-         if (n.children) n.children = filterOutNode(n.children);
+         if (n.type === 'Folder' && n.children) {
+           n.children = filterOutNode(n.children);
+         }
          return n;
        });
      }
@@ -111,13 +148,13 @@ if (typeof window !== 'undefined') {
    await requestSaveWorkspaces(true);
  }
 
- export function pinNodeToWorkspace(targetNode: any): void {
+ export function pinNodeToWorkspace(targetNode: NodeLike): void {
    const path = getNodePath(targetNode);
    workspacesStore.update(wsList => {
      const ws = wsList[get(currentWorkspaceIndex)];
      if (!ws) return wsList;
      if (!ws.pinned) ws.pinned = [];
-     if (!ws.pinned.find((p: any) => p.path === path)) {
+     if (!ws.pinned.find((p) => p.path === path)) {
        ws.pinned.push({ item_type: targetNode.type, name: targetNode.name, path });
      }
      return wsList;
@@ -129,17 +166,17 @@ if (typeof window !== 'undefined') {
    workspacesStore.update(wsList => {
      const ws = wsList[get(currentWorkspaceIndex)];
      if (ws && ws.pinned) {
-       ws.pinned = ws.pinned.filter((p: any) => p.path !== path);
+       ws.pinned = ws.pinned.filter((p) => p.path !== path);
      }
      return wsList;
    });
    requestSaveWorkspaces(true);
  }
 
- export function isNodePinned(targetNode: any): boolean {
+ export function isNodePinned(targetNode: NodeLike): boolean {
    const ws = get(workspacesStore)[get(currentWorkspaceIndex)];
    if (!ws || !ws.pinned) return false;
-   return ws.pinned.some((p: any) => p.path === getNodePath(targetNode));
+   return ws.pinned.some((p) => p.path === getNodePath(targetNode));
  }
 
  export function getWorkspaceClickBehavior(): boolean {
@@ -154,45 +191,31 @@ if (typeof window !== 'undefined') {
    };
  }
 
- export function setWorkspaceNodeSort(node: any, by: string, order: string): void {
+ export function setWorkspaceNodeSort(node: TreeVirtualNode, by: string, order: string): void {
    workspacesStore.update(wsList => {
-     node.sort_by = by;
-     node.sort_order = order;
+     if (node.type === 'Folder') {
+       node.sort_by = by;
+       node.sort_order = order;
+     }
      return wsList;
    });
    requestSaveWorkspaces(true);
  }
 
- /**
- * ノードにカテゴリを設定します。
- * ルート階層に存在しない下層ノードの場合は、自動的にルートへ複製（ショートカット追加）します。
- */
-export function setNodeCategory(targetNode: any, newCategory: string) {
-  workspacesStore.update(wsList => {
-    // currentWorkspaceIndex はストアから get() で取得する必要があります
-    // ファイル上部で import { get } from 'svelte/store'; と import { currentWorkspaceIndex } from '../stores'; されている前提です
-    // もしされていなければ、ここで Svelte のストア購読ルールに則って処理します
-    return wsList; // 一旦ダミーリターン（下で正式に書きます）
-  });
-}
-
-
 /**
  * ノードにカテゴリを設定します。
  * ルート階層に存在しない下層ノードの場合は、自動的にルートへ複製（ショートカット追加）します。
  */
-export function setWorkspaceNodeCategory(targetNode: any, newCategory: string) {
+export function setWorkspaceNodeCategory(targetNode: TreeVirtualNode, newCategory: string) {
   workspacesStore.update(wsList => {
     const currentIndex = get(currentWorkspaceIndex);
     const ws = wsList[currentIndex];
     if (!ws) return wsList;
 
-    const targetPath = targetNode.type === 'Folder' ? targetNode.original_path : targetNode.path;
+    const targetPath = getNodePath(targetNode);
 
     // ルートにすでに同じパスのノードがあるか探す
-    const existingRootNode = ws.nodes.find((n: any) => 
-      (n.type === 'Folder' ? n.original_path : n.path) === targetPath
-    );
+    const existingRootNode = ws.nodes.find((n) => getNodePath(n) === targetPath);
 
     if (existingRootNode) {
       // ルートに存在する場合はカテゴリを上書き

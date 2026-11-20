@@ -2,10 +2,11 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { invoke } from '@tauri-apps/api/core';
-    import { emit } from '@tauri-apps/api/event';
     import { getCurrentWindow } from '@tauri-apps/api/window';
+    import type { Workspace } from '../../lib/tauri/generated';
+    import { APP_EVENTS, emitAppEvent } from '../../lib/tauri/events';
 
-    let localWorkspaces: any[] = [];
+    let localWorkspaces: Workspace[] = [];
     let isLoading = true;
 
     onMount(async () => {
@@ -20,7 +21,7 @@
 
     async function selectWorkspace(index: number) {
         // メイン画面に選んだインデックスを通知（これを受け取ったメイン画面が勝手にリロードして表示されます）
-        await emit('workspace-selected', { index });
+        await emitAppEvent(APP_EVENTS.WORKSPACE_SELECTED, { index });
         
         // 自分（ランチャー）を閉じる
         await getCurrentWindow().close();

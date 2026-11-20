@@ -2,7 +2,8 @@
 <script lang="ts">
   import { invoke } from '@tauri-apps/api/core';
   import { workspacesStore, openFileInCurrentTab, openFileInNewTab, activeTabId, openTabs, switchTab, registeredTags, expandTreeRequest } from '../lib/stores'; 
-  import { getContext, tick } from 'svelte';
+  import { tick } from 'svelte';
+  import { getWorkspaceActions } from '../lib/workspace/workspaceContext';
   import { Library, FolderOpen, Folder, FileText } from 'lucide-svelte';
 
   import { extractTags, updateTagsInContent } from '../lib/utils/tagUtils';
@@ -24,7 +25,7 @@
   import { saveAndUpdateTab } from '../lib/editor/fileManager';
 
     // UI操作（モーダル）に関するものだけを Context から受け取る
-  const { editSmartFolder, openNewFileModal } = getContext('workspaceActions') as any;
+  const { editSmartFolder, openNewFileModal } = getWorkspaceActions();
 
   export let node: any;
   // isReadonly を削除し、親から引き継ぐ情報に変更

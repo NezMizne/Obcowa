@@ -5,6 +5,7 @@
   import StyleSettings from './StyleSettings.svelte';
   import { activeStyleSlot, customStyleSlots, defaultStyle, applyStyleToRoot } from '../../features/styleSettings/styleStore';
   import { activeTheme, type Theme, applyThemeToRoot } from '../../lib/settings/theme';
+  import { STORAGE_KEYS } from '../../lib/settings/storageKeys';
   import { editorFont, registeredTags, workspacesStore, currentWorkspaceIndex } from '../../lib/stores';
   import { open as openDialog } from '@tauri-apps/plugin-dialog';
 
@@ -24,12 +25,14 @@
   $: if (tempTheme) {
     applyThemeToRoot(tempTheme);
     $activeTheme = { ...tempTheme };
-    localStorage.setItem('activeTheme', JSON.stringify(tempTheme));
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_THEME, JSON.stringify(tempTheme));
   }
 
     // スタイルの編集用の一時データ
   let tempStyle = JSON.parse(JSON.stringify($activeStyleSlot));
   let tempCustomSlots = JSON.parse(JSON.stringify($customStyleSlots));
+
+  let saveTimeout: ReturnType<typeof setTimeout>;
 
   let newTagInput = '';
   let selectedTagToRemove = '';
@@ -39,14 +42,14 @@
     const t = newTagInput.trim();
     if (t && !$registeredTags.includes(t)) {
       $registeredTags = [...$registeredTags, t];
-      localStorage.setItem('registeredTags', JSON.stringify($registeredTags));
+      localStorage.setItem(STORAGE_KEYS.REGISTERED_TAGS, JSON.stringify($registeredTags));
       newTagInput = '';
     }
   }
   function removeTag() {
     if (selectedTagToRemove) {
       $registeredTags = $registeredTags.filter(t => t !== selectedTagToRemove);
-      localStorage.setItem('registeredTags', JSON.stringify($registeredTags));
+      localStorage.setItem(STORAGE_KEYS.REGISTERED_TAGS, JSON.stringify($registeredTags));
       selectedTagToRemove = '';
     }
   }
@@ -112,13 +115,13 @@
 
     // テーマの保存
     $activeTheme = { ...tempTheme };
-    localStorage.setItem('activeTheme', JSON.stringify($activeTheme));
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_THEME, JSON.stringify($activeTheme));
 
     // スタイルの保存と適用
     $activeStyleSlot = tempStyle;
     $customStyleSlots = tempCustomSlots;
-    localStorage.setItem('activeStyle', JSON.stringify(tempStyle));
-    localStorage.setItem('customStyleSlots', JSON.stringify(tempCustomSlots));
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_STYLE, JSON.stringify(tempStyle));
+    localStorage.setItem(STORAGE_KEYS.CUSTOM_STYLE_SLOTS, JSON.stringify(tempCustomSlots));
     applyStyleToRoot(tempStyle);
 
     workspacesStore.update(ws => {
@@ -137,7 +140,7 @@
 function toggleLauncherSetting() {
     const newValue = !$showLauncherOnStartup;
     showLauncherOnStartup.set(newValue);
-    localStorage.setItem('showLauncherOnStartup', newValue.toString());
+    localStorage.setItem(STORAGE_KEYS.SHOW_LAUNCHER_ON_STARTUP, newValue.toString());
 }
 
 async function openLauncherWindow() {

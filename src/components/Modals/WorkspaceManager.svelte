@@ -3,7 +3,8 @@
   import { createEventDispatcher, tick } from 'svelte';
   import { confirm as tauriConfirm } from '@tauri-apps/plugin-dialog';
   import { openTabs, activeTabId, workspacesStore, currentWorkspaceIndex } from '../../lib/stores';
-  import { requestSaveWorkspaces } from '../../lib/workspace/workspaceManager';
+  import type { LinkItem } from '../../lib/tauri/generated';
+  import { createDefaultWorkspace, requestSaveWorkspaces } from '../../lib/workspace/workspaceManager';
 
   export let editingListIndex: number;
   
@@ -16,13 +17,13 @@
   async function createNewWorkspace() {
     if (!newListName) return;
 
-        workspacesStore.update(ws => [
+    workspacesStore.update(ws => [
       ...ws, 
-      { 
-        id: Date.now().toString(), name: newListName, category: 'Active', 
-        nodes: [], links: [], pinned: [], linked_libraries: [], is_flat: false,
-        editor_font: 'sans-serif' 
-      }
+      createDefaultWorkspace({
+        id: Date.now().toString(),
+        name: newListName,
+        category: 'Active',
+      })
     ]);
 
     openTabs.set([]);
@@ -61,9 +62,9 @@
 
   // --- リンク機能関連 ---
   let isLinkModalOpen = false, editingLinkId: string | null = null, linkTitle = '', linkUrl = '';
-  let linkContextMenu = { show: false, x: 0, y: 0, link: null as any };
+  let linkContextMenu = { show: false, x: 0, y: 0, link: null as LinkItem | null };
 
-  function openLinkModal(linkToEdit?: any) {
+  function openLinkModal(linkToEdit?: LinkItem) {
     if (linkToEdit) { editingLinkId = linkToEdit.id; linkTitle = linkToEdit.title; linkUrl = linkToEdit.url; } 
     else { editingLinkId = null; linkTitle = ''; linkUrl = ''; }
     isLinkModalOpen = true;
@@ -77,7 +78,7 @@
       const targetWs = ws[editingListIndex];
       if (!targetWs.links) targetWs.links = [];
       if (editingLinkId) {
-        const idx = targetWs.links.findIndex((l:any) => l.id === editingLinkId);
+        const idx = targetWs.links.findIndex((l) => l.id === editingLinkId);
         if (idx !== -1) targetWs.links[idx] = { id: editingLinkId, title: linkTitle, url: linkUrl };
       } else { 
         targetWs.links.push({ id: Date.now().toString(), title: linkTitle, url: linkUrl }); 
@@ -93,7 +94,7 @@
     workspacesStore.update(ws => {
       const targetWs = ws[editingListIndex];
       if (targetWs && targetWs.links) {
-        targetWs.links = targetWs.links.filter((l:any) => l.id !== id);
+        targetWs.links = targetWs.links.filter((l) => l.id !== id);
       }
       return ws;
     });
@@ -101,7 +102,7 @@
     closeLinkMenu();
   }
 
-  function handleLinkContextMenu(e: MouseEvent, link: any) { e.preventDefault(); linkContextMenu = { show: true, x: e.clientX, y: e.clientY, link }; }
+  function handleLinkContextMenu(e: MouseEvent, link: LinkItem) { e.preventDefault(); linkContextMenu = { show: true, x: e.clientX, y: e.clientY, link }; }
   function closeLinkMenu() { linkContextMenu.show = false; }
 </script>
 
@@ -178,13 +179,14 @@
 
 
 <!-- リンク編集モーダル -->
-{#if linkContextMenu.show}
+{#if linkContextMenu.show && linkContextMenu.link}
+  {@const targetLink = linkContextMenu.link}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div class="fixed inset-0 z-40" on:click={closeLinkMenu} on:contextmenu|preventDefault={closeLinkMenu}></div>
   <div class="fixed border border-black/20 rounded shadow-xl z-50 py-1 w-32" style="left: {linkContextMenu.x}px; top: {linkContextMenu.y}px; background-color: var(--menu-bg); color: var(--text-color);">
-    <button class="block w-full text-left px-4 py-2 text-sm hover:bg-black/10 transition" on:click={() => { openLinkModal(linkContextMenu.link); closeLinkMenu(); }}>編集</button>
-    <button class="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-black/10 transition" on:click={() => deleteLink(linkContextMenu.link.id)}>削除</button>
+    <button class="block w-full text-left px-4 py-2 text-sm hover:bg-black/10 transition" on:click={() => { openLinkModal(targetLink); closeLinkMenu(); }}>編集</button>
+    <button class="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-black/10 transition" on:click={() => deleteLink(targetLink.id)}>削除</button>
   </div>
 {/if}
 

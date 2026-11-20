@@ -30,8 +30,23 @@ docs/03_instructions.md
 - 型エラーを回避するために any や @ts-ignore を使わない。
 - src-tauri/capabilities/ の権限やセキュリティ設定を勝手に緩めない。
 - テストが通らないからといって、テストコードの期待値を勝手に緩めたりテストを削除したりしない。
-## 検証コマンド（PR作成前に必ず実行すること）
-※ 変更がドキュメント（`docs/` や `*.md`）のみの場合は、検証コマンドを実行しない。
-※ ソースコードを変更した場合は、従来どおり該当するコマンドを必ず実行する。
-- フロントエンド単体テスト: `npx vitest run` （※ `vitest` 単体だと監視モードで止まるため必ず `run` を付けること）
-- 型チェック: `npm run check` （※package.jsonにsvelte-checkがある場合）
+
+## 検証コマンド（作業完了時・PR作成前に実施）
+
+※ 変更がドキュメント（`docs/` や `*.md`）のみの場合は、検証は不要。
+※ ソースコードを変更した場合は、該当する検証コマンドを**AI自身が実行せず**、ユーザーに実行を依頼すること。
+
+### AIの振る舞いルール
+1. **シェルコマンドを自動実行しない**：`execute_command` 等のコマンド実行ツールは使用せず、実行すべきコマンドをユーザーへテキストで提示して作業を一時停止すること。
+2. **ログ出力付きコマンドを提示する**：検証が必要な場合は、以下のとおり `tmp/verify.log` へ結果を出力するコマンドを提示し、ユーザーに実行と完了報告を依頼すること。
+3. **完了報告を受けたらログを読む**：ユーザーから「終了した」旨の報告を受けたら、`tmp/verify.log` を読み取ってエラーの有無を確認し、問題があれば修正、なければ完了報告を行うこと。
+
+### 提示するコマンド一覧（Windows PowerShell）
+- フロントエンド単体テスト:
+  `npx vitest run 2>&1 | Out-File -Encoding utf8 tmp/verify.log`
+  （※ `vitest` 単体だと監視モードで止まるため必ず `run` を付けること）
+- 型チェック:
+  `npm run check 2>&1 | Out-File -Encoding utf8 tmp/verify.log`
+  （※ `package.json` に `svelte-check` がある場合）
+- 両方まとめて実行する場合:
+  `npx vitest run 2>&1 | Out-File -Encoding utf8 tmp/verify.log; npm run check 2>&1 | Out-File -Encoding utf8 -Append tmp/verify.log`

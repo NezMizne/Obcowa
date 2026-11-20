@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import { initTheme, applyThemeToRoot, activeTheme, defaultThemes } from './theme';
+import { STORAGE_KEYS } from './storageKeys';
 
 describe('theme.ts のテスト', () => {
   beforeEach(() => {
@@ -18,7 +19,7 @@ describe('theme.ts のテスト', () => {
   it('過去の壊れたデータ（欠損）があっても、新項目がデフォルト値で補完されて復元されること', () => {
     // わざと menuBg や selectionBg が存在しない古い形式のデータを保存
     const oldThemeData = { id: 'old', name: '古いテーマ', bgColor: '#000000' };
-    localStorage.setItem('activeTheme', JSON.stringify(oldThemeData));
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_THEME, JSON.stringify(oldThemeData));
     
     // 復元処理を実行
     initTheme();

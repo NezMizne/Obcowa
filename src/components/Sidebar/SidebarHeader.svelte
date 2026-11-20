@@ -5,6 +5,7 @@
   import { open as openDialog } from '@tauri-apps/plugin-dialog';
   import { RotateCw, ArrowUpDown, Search, FolderPlus, FilePlus, ListTodo, LayoutDashboard } from 'lucide-svelte';
   import { openSearchTab, openTaskTab, openDashboardTab, workspacesStore, currentWorkspaceIndex } from '../../lib/stores';
+  import type { VirtualNode } from '../../lib/tauri/generated';
   import { requestSaveWorkspaces } from '../../lib/workspace/workspaceManager';
 
 
@@ -38,7 +39,7 @@
     isAddFolderMenuOpen = false;
     const selectedPath = await openDialog({ directory: true, multiple: false });
     if (typeof selectedPath === 'string') {
-      const newNode = { type: "Folder", name: selectedPath.split(/[/\\]/).pop() || '新規フォルダ', original_path: selectedPath, children: [] };
+      const newNode: VirtualNode = { type: "Folder", name: selectedPath.split(/[/\\]/).pop() || '新規フォルダ', original_path: selectedPath, children: [] };
       dispatch('addNode', newNode);
     }
   }
@@ -47,7 +48,7 @@
     isAddFolderMenuOpen = false;
     const selectedPath = await openDialog({ directory: false, multiple: false });
     if (typeof selectedPath === 'string') {
-      const newNode = { type: "File", name: selectedPath.split(/[/\\]/).pop() || '新規ファイル', path: selectedPath };
+      const newNode: VirtualNode = { type: "File", name: selectedPath.split(/[/\\]/).pop() || '新規ファイル', path: selectedPath, created: 0, modified: 0 };
       dispatch('addNode', newNode);
     }
   }
