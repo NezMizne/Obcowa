@@ -8,6 +8,7 @@ export interface SaveDependencies {
     readFileContent: (path: string) => Promise<string>; 
     askConflictResolution: (path: string, localContent: string, remoteContent: string) => Promise<'overwrite' | 'reload' | 'cancel'>;
     saveDashboard?: (workspaceId: string, content: string) => Promise<void>;
+    onError?: (message: string) => void;
 }
 
 export interface BaseTabData {
@@ -40,12 +41,13 @@ if (!targetTab.isDirty) {
             await deps.saveDashboard(targetTab.workspaceId, targetTab.content);
             updateTab(t => ({
                 ...t,
-                isDirty: false,
+                isDirty: t.content === targetTab.content ? false : t.isDirty,
                 isConflict: false
             }));
             return true;
         } catch (e) {
             console.error("Failed to save dashboard", e);
+            deps.onError?.(`ダッシュボードの保存に失敗しました: ${String(e)}`);
             return false;
         }
     }
@@ -64,7 +66,7 @@ if (!targetTab.isDirty) {
         );
         updateTab(t => ({
             ...t,
-            isDirty: false,
+            isDirty: t.content === targetTab.content ? false : t.isDirty,
             lastModified: newModified,
             isConflict: false
         }));
@@ -93,39 +95,46 @@ if (!targetTab.isDirty) {
                     );
                     updateTab(t => ({
                         ...t,
-                        isDirty: false,
+                        isDirty: t.content === targetTab.content ? false : t.isDirty,
                         lastModified: newModified,
                         isConflict: false
                     }));
                     onDialogStateChange?.(false);
                     return true;
                 } catch (err) {
+                    console.error("Failed to overwrite file:", err);
+                    deps.onError?.(`ファイルの上書き保存に失敗しました: ${String(err)}`);
                     onDialogStateChange?.(false);
                     return false;
                 }
 
-             } else if (resolution === 'reload') {
-                    try {
-                            const latestContent = await deps.readFileContent(targetTab.path);
-                            const newModified = await deps.getModified(targetTab.path);
+            } else if (resolution === 'reload') {
+                try {
+                    const latestContent = await deps.readFileContent(targetTab.path);
+                    const newModified = await deps.getModified(targetTab.path);
 
-                        updateTab(t => ({
-                            ...t,
-                            content: latestContent,
-                            isDirty: false,
-                            lastModified: newModified,
-                            isConflict: false
-                        }));
-                    } catch (err) {}
+                    updateTab(t => ({
+                        ...t,
+                        content: latestContent,
+                        isDirty: false,
+                        lastModified: newModified,
+                        isConflict: false
+                    }));
+                } catch (err) {
+                    console.error("Failed to reload file:", err);
+                    deps.onError?.(`外部ファイルの再読み込みに失敗しました: ${String(err)}`);
+                }
                 onDialogStateChange?.(false);
                 return false;
             } else {
                 // cancel（保留）の場合
-                    updateTab(t => ({ ...t, isConflict: true }));
-                    onDialogStateChange?.(false);
-                   return false;
+                updateTab(t => ({ ...t, isConflict: true }));
+                onDialogStateChange?.(false);
+                return false;
             }
         }
+        console.error("Failed to save file:", e);
+        deps.onError?.(`ファイルの保存に失敗しました: ${String(e)}`);
         return false;
     }
 }

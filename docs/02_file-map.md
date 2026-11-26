@@ -88,6 +88,7 @@ A03_Obcowa/
 │   │   │   ├── editorSave.test.ts
 │   │   │   ├── editorSave.ts
 │   │   │   ├── embedViewer.ts
+│   │   │   ├── fileManager.test.ts
 │   │   │   ├── fileManager.ts
 │   │   │   ├── imageViewer.test.ts
 │   │   │   ├── imageViewer.ts
@@ -454,6 +455,9 @@ A03_Obcowa/
   └── import ../workspace/treeUtils
   └── import ../../components/Editor/markdownSetup
 
+📄 `src/lib/editor/fileManager.test.ts`
+  └── import vitest
+
 📄 `src/lib/editor/fileManager.ts`
   └── import @tauri-apps/api/core
   └── import ../stores
@@ -785,6 +789,7 @@ A03_Obcowa/
   - `export interface BaseTabData`
 - `src/lib/editor/embedViewer.ts` : プレビュー内のノート埋め込みプレースホルダーを検出し、非同期でコンテンツを取得して描画する
   - `export async function loadEmbedsInDom(container: HTMLElement, currentFilePath: string, embedStack: string[] = [])`
+- `src/lib/editor/fileManager.test.ts` : fileManagerの単体テスト
 - `src/lib/editor/fileManager.ts` : 責務: SvelteからRust(Tauri)へのファイル保存リクエストを直列化（キュー管理）し、競合を防ぐ
   - `export function requestSaveFile(path: string, content: string, lastModified: number, force: boolean)`
   - `export async function saveAndUpdateTab(path: string, content: string, lastModified: number, force: boolean)`

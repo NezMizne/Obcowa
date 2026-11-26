@@ -63,62 +63,103 @@
         askConflictResolution,
         saveDashboard: async (workspaceId, content) => {
             await invoke('save_dashboard', { workspaceId, content });
+        },
+        onError: (message) => {
+            alert(message);
         }
     };
 
+    let isComposing = false;
+    let lastObservedTabId: string | null = null;
+    $: if ($activeTabId !== lastObservedTabId) {
+        isComposing = false;
+        lastObservedTabId = $activeTabId;
+    }
+
+    // 編集テキストエリアの値をStoreと同期（IME変換中や内容が既に一致している入力中はDOMを書き換えない）
+    $: if (editArea && activeTab?.isEditing && !isComposing && editArea.value !== activeTab.content) {
+        editArea.value = activeTab.content ?? '';
+    }
 
     // 同一タブに対する多重IPC呼び出しを防止するセット
     let fetchingModifiedTabs = new Set<string>();
     $: if (activeTab && activeTab.path && !isSpecialPath(activeTab.path) && activeTab.lastModified === 0 && !fetchingModifiedTabs.has(activeTab.id)) {
-        fetchingModifiedTabs.add(activeTab.id);
-        invoke('get_file_modified', { path: activeTab.path }).then((modified: any) => {
-            // 💥 変更: 直接プロパティを書き換えず、イミュータブルに更新する
-            openTabs.update(tabs => {
-                return tabs.map(t => 
-                    t.id === activeTab!.id ? { ...t, lastModified: modified as number } : t
-                );
+        const targetId = activeTab.id;
+        const targetPath = activeTab.path;
+        fetchingModifiedTabs.add(targetId);
+        invoke<number>('get_file_modified', { path: targetPath })
+            .then((modified) => {
+                // イミュータブルに更新する（非同期完了時に対象タブ・パスが一致する場合のみ反映）
+                openTabs.update(tabs => {
+                    return tabs.map(t =>
+                        t.id === targetId && t.path === targetPath ? { ...t, lastModified: modified } : t
+                    );
+                });
+            })
+            .catch((err) => {
+                console.error(`Failed to fetch file modified time [${targetPath}]:`, err);
+            })
+            .finally(() => {
+                fetchingModifiedTabs.delete(targetId);
             });
-            fetchingModifiedTabs.delete(activeTab!.id);
-        }).catch(() => {});
-            fetchingModifiedTabs.delete(activeTab!.id);
     }
-   // 💥 連続保存による非同期のズレを防ぐためのロック用変数
-   let savePromise: Promise<void> | null = null;
 
-   // 💥 修正: 保存対象のタブを引数で受け取れるように変更（指定がなければ現在のアクティブタブ）
-    async function saveCurrentTab(explicitTab?: any) {
-        if (isDialogShowing) return; 
-        
-        // 💥 別の保存処理が実行中の場合は完了を待つ（レースコンディション防止）
+    // 連続保存による非同期のズレを防ぐためのロック用変数
+    let savePromise: Promise<void> | null = null;
+
+    // 編集エリア上の未反映テキスト（IME確定直前など）を保存前にStoreへ反映する
+    function flushEditorContentToStore(tabId: string) {
+        if (editArea && activeTab?.id === tabId && activeTab.isEditing && editArea.value !== activeTab.content) {
+            const latestValue = editArea.value;
+            openTabs.update(tabs => tabs.map(t =>
+                t.id === tabId ? { ...t, content: latestValue, isDirty: true, isConflict: false } : t
+            ));
+        }
+    }
+
+    // 保存対象のタブIDを受け取り、ロック待機後に最新のStore状態から保存を実行する
+    async function saveCurrentTab(targetTabId?: string) {
+        if (isDialogShowing) return;
+
+        // 別の保存処理が実行中の場合は完了を待つ（レースコンディション防止）
         if (savePromise) {
             await savePromise;
         }
 
-        savePromise = (async () => {
-            // 非同期待ちの間にタブが切り替わっている可能性があるため、Storeから最新の情報を取得する
-            const targetTab = explicitTab || $openTabs.find(t => t.id === $activeTabId);
+        const currentPromise = (async () => {
+            // 非同期待ちの間にStoreが更新・タブが切り替わっている可能性があるため、Storeから最新の情報を取得する
+            const idToSave = targetTabId ?? $activeTabId;
+            if (!idToSave) return;
+            const targetTab = $openTabs.find(t => t.id === idToSave);
 
             if (!targetTab) return;
 
             await saveTabWithConflictCheck(
                 targetTab,
                 saveDeps,
-                (updater) => openTabs.update(tabs => tabs.map(t => t.id === targetTab.id ? updater(t) : t)),
+                (updater) => openTabs.update(tabs => tabs.map(t => t.id === idToSave ? updater(t) : t)),
                 (showing) => { isDialogShowing = showing; }
             );
         })();
 
-        await savePromise;
-        savePromise = null;
+        savePromise = currentPromise;
+        try {
+            await currentPromise;
+        } finally {
+            if (savePromise === currentPromise) {
+                savePromise = null;
+            }
+        }
     }
 
     async function handleTabClick(tabId: string) {
         clearTimeout(saveTimeout);
-       // 💥 切り替え前のタブを確実に指定して保存
+        isComposing = false;
+        // 切り替え前のタブを確実に指定して保存
         if (activeTab) {
-            await saveCurrentTab(activeTab);
+            flushEditorContentToStore(activeTab.id);
+            await saveCurrentTab(activeTab.id);
         }
-        const nextTab = $openTabs.find(t => t.id === tabId);
 
         scrollRatio = 0; // 別のタブを開いた時に前回のスクロール位置を引き継がないようリセットする
 
@@ -127,9 +168,15 @@
 
     async function handleTabClose(tabId: string) {
         if (isDialogShowing) return;
-        
+        clearTimeout(saveTimeout);
+        isComposing = false;
+
+        if (activeTab?.id === tabId) {
+            flushEditorContentToStore(tabId);
+        }
+
         // 他の保存が走っていれば待つ
-        if (savePromise) await savePromise; 
+        if (savePromise) await savePromise;
 
         const tab = $openTabs.find(t => t.id === tabId);
 
@@ -140,44 +187,56 @@
                 (updater) => openTabs.update(tabs => tabs.map(t => t.id === tab.id ? updater(t) : t)),
                 (showing) => { isDialogShowing = showing; }
             );
-            if (!saved && tab.isConflict) return; // キャンセルされた場合は閉じない
+            const latestTab = $openTabs.find(t => t.id === tabId);
+            if (!saved && latestTab?.isConflict) return; // キャンセル（保留）された場合は閉じない
         }
         closeTab(tabId);
     }
 
     async function toggleEditMode() {
         if (!activeTab) return;
-        
-        if (activeTab.isEditing && editArea) { 
-            scrollRatio = calculateScrollRatio(editArea.scrollTop, editArea.scrollHeight); 
-        } else if (!activeTab.isEditing && previewScrollContainer) { 
-            scrollRatio = calculateScrollRatio(previewScrollContainer.scrollTop, previewScrollContainer.scrollHeight); 
+        const targetId = activeTab.id;
+        const wasEditing = activeTab.isEditing;
+        isComposing = false;
+
+        if (wasEditing && editArea) {
+            scrollRatio = calculateScrollRatio(editArea.scrollTop, editArea.scrollHeight);
+        } else if (!wasEditing && previewScrollContainer) {
+            scrollRatio = calculateScrollRatio(previewScrollContainer.scrollTop, previewScrollContainer.scrollHeight);
         }
 
-        if (activeTab.isEditing && activeTab.path) { await saveCurrentTab(); } 
-        else if (!activeTab.isEditing && activeTab.path && !isSpecialPath(activeTab.path) && !activeTab.isDirty) {
+        let reloadedContent: string | null = null;
+        let reloadedModified: number | null = null;
+
+        if (wasEditing && activeTab.path) {
+            clearTimeout(saveTimeout);
+            flushEditorContentToStore(targetId);
+            await saveCurrentTab(targetId);
+        } else if (!wasEditing && activeTab.path && !isSpecialPath(activeTab.path) && !activeTab.isDirty) {
             try {
-                const latestContent: string = await invoke('read_file_content', { path: activeTab.path });
-                activeTab.content = latestContent;
-                
-                // 💥 閲覧モードから編集モードに戻す/読み込む際にも最新の更新日時を取得する
-                const modified = (await invoke('get_file_modified', { path: activeTab.path })) as number;
-                activeTab.lastModified = modified;
-            } catch(e) {}
+                reloadedContent = await invoke<string>('read_file_content', { path: activeTab.path });
+                // 閲覧モードから編集モードに戻す/読み込む際にも最新の更新日時を取得する
+                reloadedModified = await invoke<number>('get_file_modified', { path: activeTab.path });
+            } catch (e) {
+                console.error('Failed to reload file on entering edit mode:', e);
+            }
         }
 
-        // Storeのイミュータブル更新に修正
-        openTabs.update(tabs => tabs.map(t => 
-            t.id === activeTab!.id 
-                ? { ...t, content: !t.isEditing ? activeTab!.content : t.content, isEditing: !t.isEditing } 
-                : t
-        ));
+        // Storeのイミュータブル更新
+        openTabs.update(tabs => tabs.map(t => {
+            if (t.id !== targetId) return t;
+            return {
+                ...t,
+                content: reloadedContent !== null ? reloadedContent : t.content,
+                lastModified: reloadedModified !== null ? reloadedModified : t.lastModified,
+                isEditing: !wasEditing
+            };
+        }));
 
         await tick();
 
-         // プレビュー側はイベントで処理するため、ここは編集エリア（textarea）のみにする
-        if (activeTab.isEditing && editArea) {
-
+        // プレビュー側はイベントで処理するため、ここは編集エリア（textarea）のみにする
+        if (!wasEditing && editArea) {
             editArea.scrollTop = calculateScrollTopFromRatio(scrollRatio, editArea.scrollHeight);
         }
     }
@@ -189,48 +248,72 @@
         }
     }
 
-function handleInput(event: Event) {
-        const target = event.target as HTMLTextAreaElement;
-        if (!activeTab) return;
-        
-        const newText = target.value;
-        activeTab.content = newText;
-
-        // 💥 キー入力があったら即座に保留(Conflict)を解除し、未保存(Dirty)にする
-        if (activeTab.isConflict || !activeTab.isDirty) {
-            activeTab.isConflict = false;
-            activeTab.isDirty = true;
-
-            // 💥 変更: Storeのイミュータブル更新に修正
-            openTabs.update(tabs => tabs.map(t => 
-                t.id === activeTab!.id ? { ...t, isDirty: true, isConflict: false } : t
-            ));
-        }
-
+    function scheduleAutoSave(tabId: string) {
         clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => { 
-            // 1.5秒キー入力が止まったらStoreに内容を反映して自動保存
-
-            // 💥 変更: Storeのイミュータブル更新に修正
-            openTabs.update(tabs => tabs.map(t => 
-                t.id === activeTab!.id ? { ...t, content: newText } : t
-            ));
-            const current = $openTabs.find(t => t.id === activeTab!.id);
+        saveTimeout = setTimeout(() => {
+            if (isComposing) return;
+            const current = $openTabs.find(t => t.id === tabId);
             // 保留が解除されている場合のみ保存を実行
-            if (!current?.isConflict) {
-                saveCurrentTab(current); 
+            if (current && !current.isConflict) {
+                saveCurrentTab(tabId);
             }
         }, 1500);
+    }
+
+    function handleCompositionStart() {
+        isComposing = true;
+        clearTimeout(saveTimeout);
+    }
+
+    function handleCompositionEnd(event: CompositionEvent) {
+        isComposing = false;
+        const target = event.target as HTMLTextAreaElement;
+        if (!activeTab) return;
+
+        const tabId = activeTab.id;
+        const newText = target.value;
+
+        openTabs.update(tabs => tabs.map(t =>
+            t.id === tabId
+                ? { ...t, content: newText, isDirty: true, isConflict: false }
+                : t
+        ));
+
+        scheduleAutoSave(tabId);
+    }
+
+    function handleInput(event: Event) {
+        const target = event.target as HTMLTextAreaElement;
+        if (!activeTab) return;
+
+        // IME変換中の未確定入力では自動保存・Store更新を走らせず、compositionend時に確定内容を反映する
+        const inputEv = event as InputEvent;
+        if (isComposing || inputEv.isComposing) {
+            clearTimeout(saveTimeout);
+            return;
+        }
+
+        const tabId = activeTab.id;
+        const newText = target.value;
+
+        openTabs.update(tabs => tabs.map(t =>
+            t.id === tabId
+                ? { ...t, content: newText, isDirty: true, isConflict: false }
+                : t
+        ));
+
+        scheduleAutoSave(tabId);
     }
 
     // 💥 プレビュー(ビューモード)でのコンテンツ変更（タスク切り替え等）を受け取って保存する関数
     function handlePreviewContentChange(event: CustomEvent<{ path: string; content: string }>) {
         if (!activeTab) return;
         const { content } = event.detail;
+        const targetId = activeTab.id;
         
         openTabs.update(tabs => {
             return tabs.map(t => {
-                if (t.id === activeTab!.id) {
+                if (t.id === targetId) {
                     return { ...t, content, isDirty: true, isConflict: false };
                 }
                 return t;
@@ -238,7 +321,7 @@ function handleInput(event: Event) {
         });
 
         // Editor.svelte 既存の競合チェック付き安全保存を実行
-        saveCurrentTab();
+        saveCurrentTab(targetId);
     }
 
 
@@ -282,7 +365,14 @@ function handleInput(event: Event) {
                     <EditorHeader {activeTab} {toggleEditMode} />
 
                     {#if activeTab.isEditing}
-                        <textarea bind:this={editArea} class="flex-1 w-full bg-transparent resize-none focus:outline-none p-6 overflow-y-auto" style="font-family: var(--editor-font, {$editorFont}); font-size: var(--editor-font-size, 14px); line-height: var(--editor-line-height, 1.6); color: var(--text-color);" value={activeTab.content} on:input={handleInput}></textarea>
+                        <textarea
+                            bind:this={editArea}
+                            class="flex-1 w-full bg-transparent resize-none focus:outline-none p-6 overflow-y-auto"
+                            style="font-family: var(--editor-font, {$editorFont}); font-size: var(--editor-font-size, 14px); line-height: var(--editor-line-height, 1.6); color: var(--text-color);"
+                            on:compositionstart={handleCompositionStart}
+                            on:compositionend={handleCompositionEnd}
+                            on:input={handleInput}
+                        ></textarea>
                     {:else}
                         <!-- 🔽 bind:this={previewComponent} を追加 -->
                         <EditorPreview 

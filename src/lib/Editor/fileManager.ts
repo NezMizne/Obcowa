@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { openTabs } from '../stores';
 
 // 保存リクエストを順番に処理するためのプロミスチェーン（キュー）
-let saveQueue = Promise.resolve<any>(null);
+let saveQueue: Promise<void> = Promise.resolve();
 
 /**
  * ファイルの保存処理を直列化して実行する。
@@ -14,12 +14,14 @@ export function requestSaveFile(path: string, content: string, lastModified: num
     const task = saveQueue.then(async () => {
         return await invoke<number>('save_file_content', { path, content, lastModified, force });
     });
-    
-    // エラーが起きてもキュー自体が壊れず、後続の保存が続くようにする
-    saveQueue = task.catch((err) => {
-        console.error(`File save error [${path}]:`, err);
-        throw err;
-    });
+
+    // エラーが起きてもキュー自体が壊れず、後続の保存が続くようにする（再スローしない）
+    saveQueue = task.then(
+        () => undefined,
+        (err) => {
+            console.error(`File save error [${path}]:`, err);
+        }
+    );
 
     return task;
 }

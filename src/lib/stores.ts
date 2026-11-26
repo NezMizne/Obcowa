@@ -132,7 +132,17 @@ export function openFileInCurrentTab(filePath: string, title: string, initialCon
     if (currentId && resetTabs.length > 0) {
         openTabs.set(resetTabs.map(tab => 
             tab.id === currentId 
-                ? { ...tab, path: filePath, title, content: initialContent, isDirty: false }
+                ? {
+                    ...tab,
+                    path: filePath,
+                    title,
+                    content: initialContent,
+                    isDirty: false,
+                    lastModified: 0,
+                    isConflict: false,
+                    isDashboard: false,
+                    workspaceId: undefined
+                }
                 : tab
         ));
     } else {
