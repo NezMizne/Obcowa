@@ -11,3 +11,4 @@ vite.config.ts.timestamp-*
 .cline*
 /tmp
 /docs/to-do
+/docs/chatlogs
