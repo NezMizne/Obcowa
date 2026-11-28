@@ -1,4 +1,4 @@
-
+// 責務: ThemeSettings.svelte コンポーネントの単体テスト
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
 import ThemeSettings from './ThemeSettings.svelte';

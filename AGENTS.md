@@ -42,11 +42,15 @@ docs/03_instructions.md
 3. **完了報告を受けたらログを読む**：ユーザーから「終了した」旨の報告を受けたら、`tmp/verify.log` を読み取ってエラーの有無を確認し、問題があれば修正、なければ完了報告を行うこと。
 
 ### 提示するコマンド一覧（Windows PowerShell）
+（※ 実行ポリシーにより `npx` / `npm` がブロックされる環境では、`npx.cmd` / `npm.cmd` を使用してください）
 - フロントエンド単体テスト:
-  `npx vitest run 2>&1 | Out-File -Encoding utf8 tmp/verify.log`
+  `npx.cmd vitest run 2>&1 | Out-File -Encoding utf8 tmp/verify.log`
   （※ `vitest` 単体だと監視モードで止まるため必ず `run` を付けること）
 - 型チェック:
-  `npm run check 2>&1 | Out-File -Encoding utf8 tmp/verify.log`
+  `npm.cmd run check 2>&1 | Out-File -Encoding utf8 tmp/verify.log`
   （※ `package.json` に `svelte-check` がある場合）
-- 両方まとめて実行する場合:
-  `npx vitest run 2>&1 | Out-File -Encoding utf8 tmp/verify.log; npm run check 2>&1 | Out-File -Encoding utf8 -Append tmp/verify.log`
+- バックエンド（Rust）ビルド・単体テスト（`src-tauri/` を変更した場合）:
+  `cargo test --manifest-path src-tauri/Cargo.toml 2>&1 | Out-File -Encoding utf8 tmp/verify.log`
+  （※ `.githooks/_pre-push` と同等の検証。コンパイルチェックのみの場合は `cargo check --manifest-path src-tauri/Cargo.toml`）
+- フロントエンド一括実行する場合:
+  `npx.cmd vitest run 2>&1 | Out-File -Encoding utf8 tmp/verify.log; npm.cmd run check 2>&1 | Out-File -Encoding utf8 -Append tmp/verify.log`

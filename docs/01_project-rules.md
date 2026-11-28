@@ -95,3 +95,11 @@ Tauri APIはOS・ウィンドウ・ネイティブ機能との境界に限定し
 - 既存のコードでリファクタリングできそうな部分（責務の分離など）があれば教えてください
 - OSSで公開するので、セキュリティリスク（開発者の情報漏洩）などがある場合は通知する。
 - マークダウンの表示やメニューアイコンなどは、特に指示がない場合はObsidian風にする
+
+- **テストコード作成・保守ルール（Vitest / Rust）**:
+  - **ファイル名と配置**: テストは対象ファイルと同じディレクトリに配置し、拡張子は必ず `*.test.ts`（または `*.test.js` / `*.spec.{js,ts}`）とすること（`vite.config.js` の対象は `src/**/*.{test,spec}.{js,ts}` と `scripts/**/*.{test,spec}.{js,ts}`）。新規作成時は1行目に責務コメントを記載する（`docs/02_file-map.md` 自動生成対応）。
+  - **Tauri 共通モックの活用**: `@tauri-apps/api/core`（`invoke`）と `@tauri-apps/api/event`（`emit`, `listen`）は `src/test/setup.ts` で共通モックされている。テストごとの振る舞いは原則 `vi.mocked(invoke)` を `beforeEach` で `mockReset()` / `mockImplementation()` して制御すること（上記以外の Tauri プラグインを使う場合のみ個別に `vi.mock` する）。
+  - **トップレベル副作用の禁止**: テストからのインポートでクラッシュしないよう、各モジュールのトップレベルで `listen()` / `invoke()` / DOM 操作等の副作用を実行しないこと（初期化は `init*()` 等の関数に切り出す）。
+  - **型安全・期待値の厳守**: テスト内でも `any` や `@ts-ignore` を使用せず、`src/lib/tauri/generated.ts` 等の正規の型を使い `svelte-check` を通すこと。テスト失敗時に期待値を安易に緩めたりテストを削除したりせず、最新ソースコードとテストのどちらが正か確認して修正すること。
+  - **テスト間の状態分離**: `localStorage`、Svelte Store、ブラウザ API スタブ（`URL.createObjectURL` 等）を触るテストは `beforeEach` / `afterEach` で必ず初期化・復元すること。
+  - **Rust 単体テスト**: `src-tauri/src/` にテストを書く場合は、対象ファイル末尾の `#[cfg(test)] mod tests { use super::*; ... }` ブロック内に収め、作成した一時ファイルはテスト内で削除すること。

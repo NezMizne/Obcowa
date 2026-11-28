@@ -1,49 +1,116 @@
 // taskServiceの単体テスト
 
-import { describe, it, expect, vi } from 'vitest';
-import { fetchWorkspaceTasks, completeTaskStatus, buildTaskTree, sortTaskTreeNodes, type Task } from './taskService';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { invoke } from '@tauri-apps/api/core';
+import type { VirtualNode } from '../tauri/generated';
+import {
+    fetchWorkspaceTasks,
+    completeTaskStatus,
+    buildTaskTree,
+    sortTaskTreeNodes,
+    type Task,
+    type TaskTreeNode
+} from './taskService';
 
-// Tauri APIをモック化
-vi.mock('@tauri-apps/api/core', () => ({
-    invoke: vi.fn((cmd: string, args: any) => {
-        if (cmd === 'get_workspace_tasks') {
-            return Promise.resolve([
-                { 
-                    filePath: '/dummy/path.md', 
-                    lineNumber: 2, 
-                    text: 'Test Task', 
-                    originalText: '- [ ] Test Task',
-                    headings: ['H1 Title', 'H2 Subtitle']
-                }
-            ]);
-        }
-        if (cmd === 'complete_task') {
-            if (args.lineNumber === 999) return Promise.reject('Line number out of bounds');
-            return Promise.resolve();
-        }
-    })
-}));
+const invokeMock = vi.mocked(invoke);
+
+const dummyNodes: VirtualNode[] = [
+    {
+        type: 'File',
+        name: 'path.md',
+        path: '/dummy/path.md',
+        created: 0,
+        modified: 0
+    }
+];
 
 describe('taskService', () => {
+    beforeEach(() => {
+        invokeMock.mockReset();
+        invokeMock.mockImplementation(async (cmd: string, args?: unknown) => {
+            const payload = (args ?? {}) as Record<string, unknown>;
+            if (cmd === 'get_workspace_tasks') {
+                return [
+                    {
+                        filePath: '/dummy/path.md',
+                        lineNumber: 2,
+                        text: 'Test Task',
+                        originalText: '- [ ] Test Task',
+                        headings: ['H1 Title', 'H2 Subtitle']
+                    }
+                ];
+            }
+            if (cmd === 'read_file_content') {
+                if (payload.path === '/dummy/missing.md') {
+                    throw new Error('File not found');
+                }
+                return '# Title\n- [ ] Test Task\n- [ ] Another Task';
+            }
+            if (cmd === 'get_file_modified') {
+                return 1000;
+            }
+            if (cmd === 'save_file_content') {
+                return 2000;
+            }
+            return undefined;
+        });
+    });
+
     it('fetchWorkspaceTasksが正しくタスクを返すこと', async () => {
-        const tasks = await fetchWorkspaceTasks('/dummy/workspace');
+        const tasks = await fetchWorkspaceTasks(dummyNodes);
         expect(tasks.length).toBe(1);
         expect(tasks[0].text).toBe('Test Task');
+        expect(invokeMock).toHaveBeenCalledWith('get_workspace_tasks', {
+            filePaths: ['/dummy/path.md'],
+            options: null
+        });
     });
 
     it('将来の拡張オプションを渡してもエラーにならないこと', async () => {
-        const tasks = await fetchWorkspaceTasks('/dummy/workspace', { excludePaths: ['/dummy/workspace/node_modules'] });
+        const options = { excludePaths: ['/dummy/workspace/node_modules'] };
+        const tasks = await fetchWorkspaceTasks(dummyNodes, options);
         expect(tasks.length).toBe(1);
+        expect(invokeMock).toHaveBeenCalledWith('get_workspace_tasks', {
+            filePaths: ['/dummy/path.md'],
+            options
+        });
     });
 
-    it('completeTaskStatusが成功すること', async () => {
-        const task: Task = { filePath: '/dummy/path.md', lineNumber: 2, text: 'Test Task', originalText: '- [ ] Test Task', headings: [] };
+    it('completeTaskStatusが対象行を更新し、save_file_contentを呼び出して成功すること', async () => {
+        const task: Task = {
+            filePath: '/dummy/path.md',
+            lineNumber: 2,
+            text: 'Test Task',
+            originalText: '- [ ] Test Task',
+            headings: []
+        };
         await expect(completeTaskStatus(task)).resolves.toBeUndefined();
+        expect(invokeMock).toHaveBeenCalledWith('save_file_content', {
+            path: '/dummy/path.md',
+            content: '# Title\n- [x] Test Task\n- [ ] Another Task',
+            lastModified: 1000,
+            force: true
+        });
     });
 
-    it('completeTaskStatusがRustからのエラーをキャッチして例外を投げること', async () => {
-        const task: Task = { filePath: '/dummy/path.md', lineNumber: 999, text: 'Error Task', originalText: '- [ ] Error Task', headings: [] };
-        await expect(completeTaskStatus(task)).rejects.toThrow(/タスクの更新に失敗しました/);
+    it('completeTaskStatusが行未検出・Rustエラーをキャッチして例外を投げること', async () => {
+        const missingTask: Task = {
+            filePath: '/dummy/path.md',
+            lineNumber: 999,
+            text: 'Error Task',
+            originalText: '- [ ] Error Task',
+            headings: []
+        };
+        await expect(completeTaskStatus(missingTask)).rejects.toThrow(/タスクの更新に失敗しました/);
+
+        const missingFileTask: Task = {
+            filePath: '/dummy/missing.md',
+            lineNumber: 1,
+            text: 'Missing File Task',
+            originalText: '- [ ] Missing File Task',
+            headings: []
+        };
+        await expect(completeTaskStatus(missingFileTask)).rejects.toThrow(/タスクの更新に失敗しました/);
     });
     
     describe('buildTaskTree', () => {
@@ -91,21 +158,24 @@ describe('taskService', () => {
 });
 
 describe('Task Sorting and Nesting', () => {
-    it('ソート時、子タスクが親タスクに追従して正しくフラット化されること', () => {
+    it('ソート時、子タスクが親タスクのsubTasksに追従してツリー構造のまま再帰ソートされること', () => {
         const mockTasks: Task[] = [
             { text: 'B 親タスク', indentLevel: 0, fileCreated: 1, headings: [], filePath: '', lineNumber: 1, originalText: '' },
-            { text: 'Bの子タスク', indentLevel: 4, fileCreated: 1, headings: [], filePath: '', lineNumber: 2, originalText: '' },
-            { text: 'A 親タスク', indentLevel: 0, fileCreated: 2, headings: [], filePath: '', lineNumber: 3, originalText: '' },
+            { text: 'Bの子タスク2', indentLevel: 4, fileCreated: 1, headings: [], filePath: '', lineNumber: 2, originalText: '' },
+            { text: 'Bの子タスク1', indentLevel: 4, fileCreated: 1, headings: [], filePath: '', lineNumber: 3, originalText: '' },
+            { text: 'A 親タスク', indentLevel: 0, fileCreated: 2, headings: [], filePath: '', lineNumber: 4, originalText: '' },
         ];
 
-        const mockTreeNodes = [{ id: 'group1', tasks: mockTasks, children: [] }];
+        const mockTreeNodes: TaskTreeNode[] = [{ id: 'group1', name: 'Group 1', path: '', tasks: mockTasks, children: [] }];
 
-        // 文言順（text）でソート（A -> B の順になるはず）
-        const result = sortTaskTreeNodes(mockTreeNodes, 'text');
+        // 文言順（text）でソート（親は A -> B、B の subTasks 内は 1 -> 2 の順になる）
+        const result = sortTaskTreeNodes(mockTreeNodes, 'text') as TaskTreeNode[];
         const sortedTasks = result[0].tasks;
 
+        expect(sortedTasks.length).toBe(2);
         expect(sortedTasks[0].text).toBe('A 親タスク');
+        expect(sortedTasks[0].subTasks).toEqual([]);
         expect(sortedTasks[1].text).toBe('B 親タスク');
-        expect(sortedTasks[2].text).toBe('Bの子タスク'); // Bの子がBのすぐ後ろに追従している
+        expect(sortedTasks[1].subTasks?.map(t => t.text)).toEqual(['Bの子タスク1', 'Bの子タスク2']);
     });
 });

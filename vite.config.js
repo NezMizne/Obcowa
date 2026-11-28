@@ -1,13 +1,14 @@
 import { defineConfig } from "vite";
 import { sveltekit } from "@sveltejs/kit/vite";
-import tailwindcss from '@tailwindcss/vite'; 
+import tailwindcss from '@tailwindcss/vite';
+import { svelteTesting } from '@testing-library/svelte/vite';
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
-export default defineConfig(async () => ({
-  plugins: [tailwindcss(),sveltekit()],
+export default defineConfig(async ({ mode }) => ({
+  plugins: [tailwindcss(), sveltekit(), svelteTesting()],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
@@ -31,18 +32,13 @@ export default defineConfig(async () => ({
     },
   },
 
-  	test: {
-      	pool: 'forks',
-		    poolOptions: {
-			       forks: {
-			              	singleFork: true,
-			       },
-		    },
-		environment: 'jsdom', // 💥 追加: テスト環境全体を最初から仮想ブラウザにする
-		include: ['src/**/*.{test,spec}.{js,ts}'] // ←ここは既存のものがあればそのまま残してください
-	},
-//  resolve: {
-//    conditions: process.env.VITEST ? ['browser'] : []
-//  },
+  resolve: mode === 'test' ? { conditions: ['browser'] } : undefined,
 
+  test: {
+    pool: 'forks',
+    maxWorkers: 1,
+    environment: 'jsdom',
+    setupFiles: ['src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{js,ts}', 'scripts/**/*.{test,spec}.{js,ts}'],
+  },
 }));

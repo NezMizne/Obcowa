@@ -1,4 +1,4 @@
-
+// 責務: theme.ts（テーマ初期化・適用ロジック）の単体テスト
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import { initTheme, applyThemeToRoot, activeTheme, defaultThemes } from './theme';

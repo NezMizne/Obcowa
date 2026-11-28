@@ -359,7 +359,6 @@ mod tests {
 
         let _ = fs::remove_file(&target_file);
     }
-}
 
     #[test]
     fn test_save_file_content_conflict_check() {
@@ -384,3 +383,4 @@ mod tests {
 
         let _ = fs::remove_file(&target_file);
     }
+}
