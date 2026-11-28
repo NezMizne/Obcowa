@@ -353,7 +353,6 @@ pub fn run() {
             evaluate_smart_folder,
             search_ops::search_files,
 
-            open_launcher,      
             show_main_window,   
 
             file_ops::save_workspaces,
@@ -375,31 +374,6 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-// ランチャーウィンドウを開くコマンド
-#[tauri::command]
-async fn open_launcher(app: tauri::AppHandle) -> Result<(), String> {
-    // 既に開いていれば前面に出すだけ
-    if let Some(window) = app.get_webview_window("launcher") {
-        let _ = window.show();
-        let _ = window.set_focus();
-        return Ok(());
-    }
-
-    // 新しいウィンドウを作成
-    tauri::WebviewWindowBuilder::new(
-        &app,
-        "launcher",
-        tauri::WebviewUrl::App("/?launcher=true".into()),
-    )
-    .title("ワークスペース一覧")
-    .inner_size(400.0, 500.0)
-    .resizable(false)
-    .build()
-    .map_err(|e| e.to_string())?;
-
-    Ok(())
 }
 
 // メインウィンドウを表示するコマンド

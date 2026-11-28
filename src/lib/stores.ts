@@ -202,9 +202,6 @@ export function closeTab(idToClose: string) {
     syncTabsToWorkspace();
 }
 
-//  ランチャー（ワークスペース一覧）を起動時に開くかどうかの設定
-export const showLauncherOnStartup = writable<boolean>(false);
-
 export async function openDashboardTab(workspaceId: string, workspaceName: string) {
     const dashboardTabId = `dashboard-${workspaceId}`;
     const tabs = get(openTabs);

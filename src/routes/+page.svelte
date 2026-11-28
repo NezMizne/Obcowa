@@ -19,18 +19,14 @@
   import { activeTheme, initTheme, applyThemeToRoot } from '../lib/settings/theme';
   import { STORAGE_KEYS } from '../lib/settings/storageKeys';
   import { initStyles } from '../features/styleSettings/styleStore'; 
-  import { editorFont, openTabs, activeTabId, currentWorkspaceIndex, openSearchTab, registeredTags, showLauncherOnStartup, workspacesStore } from '../lib/stores';
+  import { editorFont, openTabs, activeTabId, currentWorkspaceIndex, openSearchTab, registeredTags, workspacesStore } from '../lib/stores';
   import type { UnlistenFn } from '@tauri-apps/api/event';
-  import { APP_EVENTS, listenAppEvent } from '../lib/tauri/events';
-  import LauncherWindow from '../features/launcher/LauncherWindow.svelte';
   import { refreshTree } from '../lib/workspace/treeUtils';
   import { isSpecialPath, isDashboardPath, getWorkspaceIdFromDashboardPath } from '../lib/utils/pathUtils';
   import { requestSaveWorkspaces, initWorkspaceSyncListener, removeNodeFromWorkspace, pinNodeToWorkspace, unpinNodeFromWorkspace, isNodePinned, getWorkspaceClickBehavior, getWorkspaceGlobalSort, setWorkspaceNodeSort, getNodePath } from '../lib/workspace/workspaceManager';
   import { setWorkspaceActions, type TreeVirtualNode } from '../lib/workspace/workspaceContext';
   import type { LinkItem, VirtualNode } from '../lib/tauri/generated';
   import { initializeWorkspaceSession } from '../lib/workspace/workspaceInit';
-
-  let isLauncherWindow = false;
 
   let sidebarWidth = 260;
   let isResizing = false;
@@ -120,41 +116,13 @@
     await requestSaveWorkspaces();
   }
   let unlistenWorkspaceSync: UnlistenFn | null = null;
-  let unlistenWorkspaceSelected: UnlistenFn | null = null;
 
   onMount(async () => {
-
-    // このウィンドウがランチャー用として開かれたかどうかの判定
-    if (window.location.search.includes('launcher=true')) {
-        isLauncherWindow = true;
-        return; // これ以降のメイン画面用の初期化処理をすべてキャンセル
-    }
-
     try {
       const savedTags = localStorage.getItem(STORAGE_KEYS.REGISTERED_TAGS);
       if (savedTags) registeredTags.set(JSON.parse(savedTags));
     } catch (e) {
       console.error('登録済みタグの復元に失敗しました:', e);
-    }
-
-    // ランチャー設定と状態の読み込み
-    const launcherSetting = localStorage.getItem(STORAGE_KEYS.SHOW_LAUNCHER_ON_STARTUP) === 'true';
-    showLauncherOnStartup.set(launcherSetting);
-    
-    // URLに ?ws= があるか（＝ランチャーから選択されてリロードされた後かどうか）
-    const hasWsParam = window.location.search.includes('ws=');
-
-    if (launcherSetting && !hasWsParam) {
-        // 設定ONで、かつまだ選ばれていない初回起動時はランチャーを開く
-        await invoke('open_launcher');
-        
-        // ランチャーからの選択を待ち、選ばれたらリロードする
-        unlistenWorkspaceSelected = await listenAppEvent(APP_EVENTS.WORKSPACE_SELECTED, (payload) => {
-            window.location.href = `/?ws=${payload.index}`;
-        });
-        
-        // メイン画面は隠したまま、ここで処理を終了（裏で無駄なファイル読み込みをさせないため）
-        return;
     }
 
     initTheme();
@@ -179,7 +147,6 @@
 
   onDestroy(() => {
     unlistenWorkspaceSync?.();
-    unlistenWorkspaceSelected?.();
   });
 
 
@@ -206,13 +173,6 @@ let isSettingsOpen = false;
 
 
 <svelte:window on:mousemove={doResize} on:mouseup={stopResize} />
-
-{#if isLauncherWindow}
-    <!-- ランチャーとして開かれた場合は、これだけを表示 -->
-    <LauncherWindow />
-{:else}
-    <!-- メイン画面として開かれた場合は、既存のUIを表示 -->
-
 
 <main class="h-screen w-screen flex select-none transition-colors duration-200"
       style="background-color: var(--bg-color); color: var(--text-color);">
@@ -312,5 +272,3 @@ let isSettingsOpen = false;
     requestSaveWorkspaces(true);
   }}
 />
-
-{/if}

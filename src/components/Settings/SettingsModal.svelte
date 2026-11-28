@@ -9,8 +9,6 @@
   import { editorFont, registeredTags, workspacesStore, currentWorkspaceIndex } from '../../lib/stores';
   import { open as openDialog } from '@tauri-apps/plugin-dialog';
 
-  import { showLauncherOnStartup } from '../../lib/stores';
-  import { invoke } from '@tauri-apps/api/core';
   import { requestSaveWorkspaces } from '../../lib/workspace/workspaceManager';
   import { X } from 'lucide-svelte';
 
@@ -136,17 +134,6 @@
     dispatch('close');
   }
 
-  // ランチャー画面の設定
-function toggleLauncherSetting() {
-    const newValue = !$showLauncherOnStartup;
-    showLauncherOnStartup.set(newValue);
-    localStorage.setItem(STORAGE_KEYS.SHOW_LAUNCHER_ON_STARTUP, newValue.toString());
-}
-
-async function openLauncherWindow() {
-    await invoke('open_launcher');
-}
-
   // Escキーで閉じる
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') {
@@ -251,36 +238,6 @@ async function openLauncherWindow() {
             <span class="text-sm">プレビューでファイルのプロパティ（フロントマター）を表示する</span>
           </label>
         </div>
-
-        <!-- ランチャーの設定エリア -->
-        <div class="mb-6">
-    <div class="text-sm opacity-80 mb-2">起動設定</div>
-          <div 
-            class="flex items-center justify-between p-3 rounded border"
-            style="background-color: color-mix(in srgb, var(--text-color) 3%, transparent); border-color: color-mix(in srgb, var(--text-color) 10%, transparent);"
-          >
-        <div>
-            <div class="font-medium">ワークスペース一覧 (ランチャー)</div>
-            <label class="flex items-center space-x-2 mt-2 cursor-pointer">
-                <input 
-                    type="checkbox" 
-                    class="cursor-pointer"
-                    style="accent-color: var(--accent-color);"
-                    checked={$showLauncherOnStartup} 
-                    on:change={toggleLauncherSetting} 
-                />
-                <span class="text-sm opacity-80">起動時にこの画面を開いて選択する</span>
-            </label>
-        </div>
-        <button 
-            on:click={openLauncherWindow} 
-            class="px-4 py-2 rounded text-sm font-medium hover:opacity-90 transition-opacity"
-            style="background-color: var(--accent-color); color: var(--bg-color);"
-        >
-            一覧を開く
-        </button>
-    </div>
-</div>
 
         <hr class="mb-6 border-0 border-t" style="border-color: color-mix(in srgb, var(--text-color) 10%, transparent);">
 

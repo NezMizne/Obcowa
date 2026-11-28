@@ -3,12 +3,10 @@ import { emit, listen, type UnlistenFn } from '@tauri-apps/api/event';
 
 export const APP_EVENTS = {
     WORKSPACES_UPDATED: 'workspaces-updated',
-    WORKSPACE_SELECTED: 'workspace-selected',
 } as const;
 
 export interface AppEventMap {
     [APP_EVENTS.WORKSPACES_UPDATED]: void;
-    [APP_EVENTS.WORKSPACE_SELECTED]: { index: number };
 }
 
 export type AppEventName = keyof AppEventMap;

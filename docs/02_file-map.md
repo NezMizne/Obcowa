@@ -57,7 +57,7 @@ A03_Obcowa/
 │   │   │   ├── SettingsModal.svelte
 │   │   │   ├── StyleSettings.svelte
 │   │   │   ├── ThemeSettings.svelte
-│   │   │   └── ThemeSettings.tst.ts
+│   │   │   └── ThemeSettings.test.ts
 │   │   ├── Sidebar
 │   │   │   ├── SidebarFooter.svelte
 │   │   │   ├── SidebarHeader.svelte
@@ -76,9 +76,6 @@ A03_Obcowa/
 │   │   │   ├── TaskGroupNode.svelte
 │   │   │   ├── TaskItem.svelte
 │   │   │   └── TaskList.svelte
-│   │   ├── launcher
-│   │   │   ├── +page.svelte
-│   │   │   └── LauncherWindow.svelte
 │   │   └── styleSettings
 │   │       ├── styleStore.test.ts
 │   │       └── styleStore.ts
@@ -97,7 +94,7 @@ A03_Obcowa/
 │   │   │   └── scrollSync.ts
 │   │   ├── settings
 │   │   │   ├── storageKeys.ts
-│   │   │   ├── theme.tet.ts
+│   │   │   ├── theme.test.ts
 │   │   │   └── theme.ts
 │   │   ├── stores.ts
 │   │   ├── task
@@ -119,10 +116,12 @@ A03_Obcowa/
 │   │       ├── workspaceContext.ts
 │   │       ├── workspaceInit.ts
 │   │       └── workspaceManager.ts
-│   └── routes
-│       ├── +layout.svelte
-│       ├── +layout.ts
-│       └── +page.svelte
+│   ├── routes
+│   │   ├── +layout.svelte
+│   │   ├── +layout.ts
+│   │   └── +page.svelte
+│   └── test
+│       └── setup.ts
 ├── src-tauri
 │   ├── .gitignore
 │   ├── 2
@@ -321,8 +320,6 @@ A03_Obcowa/
   └── import ../../lib/settings/storageKeys
   └── import ../../lib/stores
   └── import @tauri-apps/plugin-dialog
-  └── import ../../lib/stores
-  └── import @tauri-apps/api/core
   └── import ../../lib/workspace/workspaceManager
   └── import lucide-svelte
 
@@ -334,7 +331,7 @@ A03_Obcowa/
   └── import ../../lib/settings/storageKeys
   └── import svelte/store
 
-📄 `src/components/Settings/ThemeSettings.tst.ts`
+📄 `src/components/Settings/ThemeSettings.test.ts`
   └── import vitest
   └── import @testing-library/svelte
   └── import ./ThemeSettings.svelte
@@ -419,16 +416,6 @@ A03_Obcowa/
   └── import ../../lib/workspace/menuUtils
   └── import ../../lib/workspace/workspaceManager
 
-📄 `src/features/launcher/+page.svelte`
-  └── import ../../features/launcher/LauncherWindow.svelte
-
-📄 `src/features/launcher/LauncherWindow.svelte`
-  └── import svelte
-  └── import @tauri-apps/api/core
-  └── import @tauri-apps/api/window
-  └── import ../../lib/tauri/generated
-  └── import ../../lib/tauri/events
-
 📄 `src/features/styleSettings/styleStore.test.ts`
   └── import vitest
   └── import ./styleStore
@@ -464,6 +451,7 @@ A03_Obcowa/
 
 📄 `src/lib/editor/imageViewer.test.ts`
   └── import vitest
+  └── import @tauri-apps/api/core
   └── import ./imageViewer
 
 📄 `src/lib/editor/imageViewer.ts`
@@ -476,7 +464,7 @@ A03_Obcowa/
   └── import vitest
   └── import ./scrollSync
 
-📄 `src/lib/settings/theme.tet.ts`
+📄 `src/lib/settings/theme.test.ts`
   └── import vitest
   └── import svelte/store
   └── import ./theme
@@ -494,7 +482,8 @@ A03_Obcowa/
 
 📄 `src/lib/task/taskService.test.ts`
   └── import vitest
-  └── import ./taskService
+  └── import @tauri-apps/api/core
+  └── import ../tauri/generated
 
 📄 `src/lib/task/taskService.ts`
   └── import @tauri-apps/api/core
@@ -567,14 +556,15 @@ A03_Obcowa/
   └── import ../features/styleSettings/styleStore
   └── import ../lib/stores
   └── import @tauri-apps/api/event
-  └── import ../lib/tauri/events
-  └── import ../features/launcher/LauncherWindow.svelte
   └── import ../lib/workspace/treeUtils
   └── import ../lib/utils/pathUtils
   └── import ../lib/workspace/workspaceManager
   └── import ../lib/workspace/workspaceContext
   └── import ../lib/tauri/generated
   └── import ../lib/workspace/workspaceInit
+
+📄 `src/test/setup.ts`
+  └── import vitest
 
 📄 `src-tauri/src/dashboard_ops.rs`
   └── use/mod std::fs
@@ -622,6 +612,7 @@ A03_Obcowa/
   └── import vite
   └── import @sveltejs/kit/vite
   └── import @tailwindcss/vite
+  └── import @testing-library/svelte/vite
 
 ## 各ファイル詳細
 
@@ -708,7 +699,7 @@ A03_Obcowa/
   - `export let tempTheme`
   - `export function applyPreset()`
   - `export function saveCustomTheme()`
-- `src/components/Settings/ThemeSettings.tst.ts` : （説明未記載）
+- `src/components/Settings/ThemeSettings.test.ts` : 責務: ThemeSettings.svelte コンポーネントの単体テスト
 
 ### src/components/Sidebar/
 - `src/components/Sidebar/SidebarFooter.svelte` : サイドバー下部のリスト切り替え・設定ボタン
@@ -763,10 +754,6 @@ A03_Obcowa/
 - `src/features/Task/TaskList.svelte` : 責務: ワークスペースの未完了タスク一覧を表示し、更新を管理する親コンポーネント
   - `export let workspaceIndex`
 
-### src/features/launcher/
-- `src/features/launcher/+page.svelte` : 責務: ランチャーウィンドウ用のルーティングエントリポイント
-- `src/features/launcher/LauncherWindow.svelte` : 責務: 独立した小ウィンドウでワークスペースの一覧を表示し、選択結果をメイン画面に送信する
-
 ### src/features/styleSettings/
 - `src/features/styleSettings/styleStore.test.ts` : （説明未記載）
 - `src/features/styleSettings/styleStore.ts` : エディタ・見出しスタイル設定のストアとCSS変数生成・適用ロジック
@@ -793,7 +780,7 @@ A03_Obcowa/
 - `src/lib/editor/fileManager.ts` : 責務: SvelteからRust(Tauri)へのファイル保存リクエストを直列化（キュー管理）し、競合を防ぐ
   - `export function requestSaveFile(path: string, content: string, lastModified: number, force: boolean)`
   - `export async function saveAndUpdateTab(path: string, content: string, lastModified: number, force: boolean)`
-- `src/lib/editor/imageViewer.test.ts` : --- START OF src/lib/imageViewer.test.ts ---
+- `src/lib/editor/imageViewer.test.ts` : 責務: imageViewer.ts（DOM上の画像プレースホルダー検出・読込・キャッシュ）の単体テスト
 - `src/lib/editor/imageViewer.ts` : プレビュー内の画像プレースホルダーを検出し、ローカル画像の検索・バイナリ読込・Blobキャッシュと表示反映を行う
   - `export async function loadImagesInDom(container: HTMLElement, activeTabPath: string, imageFolders: string[] = [])`
 - `src/lib/editor/mermaidViewer.ts` : Mermaid記法のプレースホルダーを見つけ、SVG画像に変換して画面にマウントする責務を持つ
@@ -807,7 +794,7 @@ A03_Obcowa/
 - `src/lib/settings/storageKeys.ts` : 責務: アプリ全体で使用する localStorage のキー定数を一元管理する
   - `export const STORAGE_KEYS`
   - `export type StorageKey`
-- `src/lib/settings/theme.tet.ts` : （説明未記載）
+- `src/lib/settings/theme.test.ts` : 責務: theme.ts（テーマ初期化・適用ロジック）の単体テスト
 - `src/lib/settings/theme.ts` : テーマ設定のプリセット、起動時テーマ復元処理、テーマ適用
   - `export interface Theme`
   - `export const defaultThemes`
@@ -834,7 +821,6 @@ A03_Obcowa/
   - `export function openFileInNewTab(filePath: string, title: string, initialContent: string)`
   - `export function createNewTab()`
   - `export function closeTab(idToClose: string)`
-  - `export const showLauncherOnStartup`
   - `export async function openDashboardTab(workspaceId: string, workspaceName: string)`
 
 ### src/lib/task/
@@ -927,6 +913,9 @@ A03_Obcowa/
 - `src/routes/+layout.ts` : Tauri doesn't have a Node.js server to do proper SSR
   - `export const ssr`
 - `src/routes/+page.svelte` : アプリのメイン画面（ガワ）。全体のデータとモーダル状態を管理。
+
+### src/test/
+- `src/test/setup.ts` : 責務: Vitest全テスト共通のセットアップ（Tauri IPC/Event APIのデフォルトモック定義）
 
 ### src-tauri/
 - `src-tauri/build.rs` : （説明未記載）

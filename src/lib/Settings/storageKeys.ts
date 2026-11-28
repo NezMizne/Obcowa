@@ -6,7 +6,6 @@ export const STORAGE_KEYS = {
     ACTIVE_STYLE: 'activeStyle',
     CUSTOM_STYLE_SLOTS: 'customStyleSlots',
     REGISTERED_TAGS: 'registeredTags',
-    SHOW_LAUNCHER_ON_STARTUP: 'showLauncherOnStartup',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

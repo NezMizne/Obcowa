@@ -158,11 +158,6 @@ export interface TauriCommandMap {
         args: { path: string };
         return: void;
     };
-    /** defined in src-tauri/src/lib.rs */
-    open_launcher: {
-        args: void;
-        return: void;
-    };
     /** defined in src-tauri/src/file_ops.rs */
     read_directory: {
         args: { path: string; sortBy?: string | null; sortOrder?: string | null };
